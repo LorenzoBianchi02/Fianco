@@ -14,7 +14,8 @@ ARGS :=
 FLAGS :=
 LIB :=
 
-all: clean build run
+#all: clear build run
+all: clean
 
 build: $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LIB)
@@ -26,10 +27,6 @@ $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) -I $(INC)/ $(FLAGS) -c $< -o $@
 
 only: build
-
-force:
-	$(CC) $(FLAGS) $(SRCS) -o $(TARGET) $(LIB)
-
 
 clean: clear remove build run
 
