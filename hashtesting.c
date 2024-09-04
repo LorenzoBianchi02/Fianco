@@ -3,19 +3,19 @@
 #include "hashmap.h"
 
 struct user {
-    __uint128_t board;
+    int board[2][2];
     int val;
 };
 
 int user_compare(const void *a, const void *b, void *udata) {
     const struct user *ua = a;
     const struct user *ub = b;
-    return ua->board - ub->board;
+    return ua->board[0][0] - ub->board[0][0];
 }
 
 uint64_t user_hash(const void *item, uint64_t seed0, uint64_t seed1) {
     const struct user *user = item;
-    return hashmap_murmur(&user->board, sizeof(uint64_t), seed0, seed1);
+    return hashmap_murmur(&user->board, sizeof(int[2][2]), seed0, seed1);
 }
 
 int main() {
@@ -27,32 +27,43 @@ int main() {
 
     // Here we'll load some users into the hash map. Each set operation
     // performs a copy of the data that is pointed to in the second argument.
-    hashmap_set(map, &(struct user){ .board=5, .val=1 });
-    hashmap_set(map, &(struct user){ .board=7, .val=2 });
-    hashmap_set(map, &(struct user){ .board=100, .val=3 });
+    hashmap_set(map, &(struct user){ .board={{1, 2}, {3, 4}}, .val=1 });
+    hashmap_set(map, &(struct user){ .board={{1, 2}, {5, 4}}, .val=2 });
+    hashmap_set(map, &(struct user){ .board={{2, 2}, {3, 4}}, .val=3 });
 
     const struct user *user; 
     
     printf("\n-- get some users --\n");
-    user = hashmap_get(map, &(struct user){ .board=5 });
+    user = hashmap_get(map, &(struct user){ .board={{1, 2}, {3, 4}} });
     printf("val=%d\n", user->val);
 
-    user = hashmap_get(map, &(struct user){ .board=7 });
+    user = hashmap_get(map, &(struct user){ .board={{1, 2}, {5, 4}} });
     printf("val=%d\n", user->val);
 
-    user = hashmap_get(map, &(struct user){ .board=100 });
+    user = hashmap_get(map, &(struct user){ .board={{2, 2}, {3, 4}} });
     printf("val=%d\n", user->val);
 
-    hashmap_set(map, &(struct user){ .board=100, .val=-5 });
-    user = hashmap_get(map, &(struct user){ .board=100 });
+    hashmap_set(map, &(struct user){ .board={{2, 2}, {3, 4}}, .val=-5 });
+    user = hashmap_get(map, &(struct user){ .board={{2, 2}, {3, 4}} });
     printf("val=%d\n", user->val);
 
-    user = hashmap_get(map, &(struct user){ .board=1 });
+    user = hashmap_get(map, &(struct user){ .board={{2, 2}, {3, 4}} });
     printf("%s\n", user?"exists":"not exists");
+
+
 
     printf("\n-- iterate over all users (hashmap_iter) --\n");
     size_t iter = 0;
     void *item;
+    while (hashmap_iter(map, &iter, &item)) {
+        const struct user *user = item;
+        printf("(val=%d)\n", user->val);
+    }
+
+    hashmap_delete(map, &(struct user){ .board={{1, 2}, {5, 4}}});
+
+    printf("\n-- iterate over all users (hashmap_iter) --\n");
+    iter = 0;
     while (hashmap_iter(map, &iter, &item)) {
         const struct user *user = item;
         printf("(val=%d)\n", user->val);
