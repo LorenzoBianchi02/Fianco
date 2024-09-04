@@ -43,6 +43,10 @@ int main() {
     user = hashmap_get(map, &(struct user){ .board=100 });
     printf("val=%d\n", user->val);
 
+    hashmap_set(map, &(struct user){ .board=100, .val=-5 });
+    user = hashmap_get(map, &(struct user){ .board=100 });
+    printf("val=%d\n", user->val);
+
     user = hashmap_get(map, &(struct user){ .board=1 });
     printf("%s\n", user?"exists":"not exists");
 
