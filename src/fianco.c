@@ -18,21 +18,21 @@ struct list_elem{
     list_elem *next;
 };
 
-typedef struct board{
+typedef struct board_t{
     list_elem *cell[9][9];
     list_elem *white_head;
     list_elem *white_tail;
     list_elem *black_head;
     list_elem *black_tail;
-}board;
+}board_t;
 
 
-board *initializeBoard();
-void printBoard(board *b);
+board_t *initializeBoard();
+void printBoard(board_t *board);
 
 
 int main(){
-    //---NCURSES---//
+    //---------NCURSES---------//
     setlocale(LC_ALL, "");
 
     initscr();
@@ -41,71 +41,60 @@ int main(){
     cbreak();
     keypad(stdscr, TRUE);
     curs_set(0);
-    noecho();
-
-    printw("test\n");
-    refresh();
 
 	mousemask(ALL_MOUSE_EVENTS, NULL);
 
     // init_color(COLOR_GREEN, 158, 93, 30);
     // init_color(COLOR_WHITE, 205, 170, 125);
     
-    init_pair(1, COLOR_BLACK, COLOR_WHITE);
-    init_pair(2, COLOR_BLACK, COLOR_BLUE);
+    init_pair(1, COLOR_BLACK, COLOR_WHITE); //board color 1
+    init_pair(2, COLOR_BLACK, COLOR_BLUE);  //board color 2
     init_pair(3, COLOR_BLACK, COLOR_CYAN);
     init_pair(4, COLOR_BLACK, COLOR_BLACK);
-    init_pair(5, COLOR_BLACK, COLOR_MAGENTA);
+    init_pair(5, COLOR_BLACK, COLOR_MAGENTA);   //TODO: remove not used pairs
+    init_pair(6, COLOR_BLACK, COLOR_RED);
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
 
     MEVENT mevent;
 
-    //---MAIN---//
-    board *b = initializeBoard();
+    //---------MAIN---------//
+    board_t *board = initializeBoard();
 
-    printBoard(b);
+    printBoard(board);
 
-/*
-    while(1){
+    int fromx, fromy, tox, toy;
+
+
+    while(true){
         getch();
         getmouse(&mevent);
-        from.x = mevent.y;
-        from.y = mevent.x/2;
+        fromx = mevent.y;
+        fromy = mevent.x/2;
         refresh();
 
-        attron(COLOR_PAIR(3));
-        move(from.x, from.y*2);
-        printPiece(&board.piece[from.x][from.y]);
-        attroff(COLOR_PAIR(3));
+        mvchgat(fromx, fromy*2, 2, A_NORMAL, 3, NULL);
 
         getch();
         getmouse(&mevent);
-        to.x = mevent.y;
-        to.y = mevent.x/2;
+        tox = mevent.y;
+        toy = mevent.x/2;
         refresh();
         
         clear();
 
-        if(move_piece(&board, from, to))
-            board.info.turn++;
-        else{
-            mvprintw(14, 0, "INVALID MOVE");
-        }
+        // if(move_piece(&board, from, to))
+        //     board.info.turn++;
+        // else{
+        //     mvprintw(14, 0, "INVALID MOVE");
+        // }
 
-        printBoard(&board);
-
-        printw("\n");
-        attron(COLOR_PAIR(1 + 3 * (board.info.turn%2)));
-        printw("  ");
-        attroff(COLOR_PAIR(1 + 3 * (board.info.turn%2)));
-        printw("turn: ");
+        printBoard(board);        
     }
 
 
-    
-    */
+
 
     getch();
     endwin();
@@ -114,13 +103,13 @@ int main(){
 }
 
 
-board *initializeBoard(){
-    board *b = (board *)malloc(sizeof(board));
+board_t *initializeBoard(){
+    board_t *board = (board_t *)malloc(sizeof(board_t));
 
-    b->black_head = NULL;
-    b->black_tail = NULL;
-    b->white_head = NULL;
-    b->white_tail = NULL;
+    board->black_head = NULL;
+    board->black_tail = NULL;
+    board->white_head = NULL;
+    board->white_tail = NULL;
 
 
     //setting up the board
@@ -146,24 +135,24 @@ board *initializeBoard(){
             elem->prev = NULL; //TODO:
             elem->next = NULL;
 
-            b->cell[i][j] = elem;
+            board->cell[i][j] = elem;
         }
     }
 
 
-    return b;
+    return board;
 }
 
-void printBoard(board *b){
+void printBoard(board_t *board){
     erase();
     int i, j;
     move(1, 2);
     for(i=8; i>=0; i--){
         for(j=0; j<9; j++){
             attron(COLOR_PAIR(((i+j)%2)+1));
-            if(b->cell[i][j]->player == 1)
+            if(board->cell[i][j]->player == 1)
                 printw("%s", "\u26C0 ");
-            else if(b->cell[i][j]->player == 2)
+            else if(board->cell[i][j]->player == 2)
                 printw("%s", "\u26C2 ");
             else
                 printw("  ");
