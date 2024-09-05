@@ -12,7 +12,7 @@ OBJS := $(addprefix $(OBJ)/,$(addsuffix .o,$(FILES)))
 ARGS := 
 #FLAGS := -Werror -Wall
 FLAGS :=
-LIB :=
+LIB := -lncursesw
 
 #all: clear build run
 all: clean
