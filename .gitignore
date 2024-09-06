@@ -1,4 +1,4 @@
 *.out
 test.c
-.gitignore
+*.gitignore
 *.o

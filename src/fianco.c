@@ -50,8 +50,8 @@ int main(){
     
     //TODO: remove not used pairs
     // NB: be carefull when changing the order
-    init_pair(1, COLOR_BLACK, COLOR_YELLOW);   //board color 1
-    init_pair(2, COLOR_BLACK, COLOR_GREEN);   //board color 2
+    init_pair(1, COLOR_BLACK, COLOR_YELLOW);    //board color 1
+    init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
     init_pair(4, COLOR_WHITE, COLOR_YELLOW);    //piece selected 1
     init_pair(3, COLOR_WHITE, COLOR_GREEN);     //piece selected 2
     init_pair(5, COLOR_BLACK, COLOR_MAGENTA);
@@ -75,6 +75,7 @@ int main(){
             getmouse(&mevent);
             fromx = mevent.y;
             fromy = mevent.x/2;
+            refresh();
         // }while(!board->cell[fromx][fromy]->player);      //FIXME: crashes
 
         mvchgat(fromx, fromy*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
@@ -165,7 +166,7 @@ void printBoard(board_t *board){
     refresh();
 }
 
-//it is garenteed that a piece is present on fromx/fromy
+//it should be garenteed that a piece is present on fromx/fromy (IT ISN'T)
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
-    return false;
+    
 }
