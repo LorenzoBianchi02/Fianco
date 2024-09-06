@@ -60,8 +60,8 @@ int main(){
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
-
     MEVENT mevent;
+
 
     //---------MAIN---------//
     board_t *board = initializeBoard();
@@ -143,7 +143,6 @@ board_t *initializeBoard(){
                     
                     elem->next = NULL;
                     last[elem->player-1] = elem;
-
                 }
 
                 board->cell[i][j] = elem;
@@ -182,4 +181,16 @@ void printBoard(board_t *board){
 //it should be garenteed that a piece is present on fromx/fromy (IT ISN'T)
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     return false;
+}
+
+void  printList(piece_t *l){
+    piece_t *p = l;
+    move(17, 0);
+
+    while(p){
+        printw("%d %d %d  \n", p->x, p->y, p->player);
+        p=p->next;
+    }
+
+    refresh();
 }
