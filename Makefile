@@ -10,8 +10,8 @@ FILES := $(notdir $(basename $(SRCS)))
 OBJS := $(addprefix $(OBJ)/,$(addsuffix .o,$(FILES)))
 
 ARGS := 
-FLAGS := -Werror -Wall
-# FLAGS :=
+# FLAGS := -Werror -Wall
+FLAGS :=
 LIB := -lncursesw
 
 #all: clear build run

@@ -27,6 +27,8 @@ typedef struct board_t{
 
 board_t *initializeBoard();
 void printBoard(board_t *board);
+int boardCoords(int *x, int *y);
+int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 
 //debug functions
@@ -71,31 +73,33 @@ int main(){
     int fromx, fromy, tox, toy;
 
     while(true){
-        // do{
+        do{
             getch();
             getmouse(&mevent);
-            fromx = mevent.y;
-            fromy = mevent.x/2;
+            fromx = mevent.x/2;
+            fromy = mevent.y;
             refresh();
-        // }while(!board->cell[fromx][fromy]->player);      //FIXME: crashes
+            mvprintw(10, 0, "%d %d", fromx, fromy);
+            refresh();
+        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy]->player);
 
-        mvchgat(fromx, fromy*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
+        // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
+
+        mvchgat(9-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
 
         getch();
         getmouse(&mevent);
-        tox = mevent.y;
-        toy = mevent.x/2;
+        tox = mevent.x/2;
+        toy = mevent.y;
         refresh();
+        boardCoords(&tox, &toy);
         
         if(!movePiece(board, fromx, fromy, tox, toy)){
-            mvprintw(11, 2, "INVALID MOVE");
+            mvprintw(11, 2, "INVALID MOVE"); //TODO: when clicking outside of screen it shoulnd't say this (handle this in the functions)
         }
 
-        mvchgat(fromx, fromy*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+        mvchgat(9 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
     }
-
-
-
 
     getch();
     endwin();
@@ -110,15 +114,15 @@ board_t *initializeBoard(){
     //setting up the board
     int init_board[9][9] = 
     {
-        {1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {0, 1, 0, 0, 0, 0, 0, 1, 0},
-        {0, 0, 1, 0, 0, 0, 1, 0, 0},
-        {0, 0, 0, 1, 0, 1, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 2, 0, 2, 0, 0, 0},
-        {0, 0, 2, 0, 0, 0, 2, 0, 0},
-        {0, 2, 0, 0, 0, 0, 0, 2, 0},
-        {2, 2, 2, 2, 2, 2, 2, 2, 2}
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
     };
 
     piece_t *last[2];
@@ -130,10 +134,10 @@ board_t *initializeBoard(){
                 piece_t *elem = (piece_t *)malloc(sizeof(piece_t));
                 elem->x = i;
                 elem->y = j;
-                elem->player = init_board[i][j];
+                elem->player = init_board[j][i];
 
                 //if piece add to list
-                if(init_board[i][j] != 0){
+                if(init_board[j][i] != 0){
                     elem->prev = last[elem->player];
 
                     if(last[elem->player-1])
@@ -145,7 +149,7 @@ board_t *initializeBoard(){
                     last[elem->player-1] = elem;
                 }
 
-                board->cell[i][j] = elem;
+                board->cell[j][i] = elem;
         }
     }
 
@@ -158,9 +162,10 @@ board_t *initializeBoard(){
 void printBoard(board_t *board){
     erase();
     int i, j;
-    move(1, 2);
-    for(i=8; i>=0; i--){
-        for(j=0; j<9; j++){
+    move(0, 0);
+
+    for(j=9; j>=0; j--){
+        for(i=0; i<9; i++){
             attron(COLOR_PAIR(((i+j)%2)+1));
             if(board->cell[i][j]->player == 1)
                 printw("%s", "\u26C0 ");
@@ -170,7 +175,7 @@ void printBoard(board_t *board){
                 printw("  ");
             attroff(COLOR_PAIR(((i+j)%2)+1));
         }
-        printw("\n  ");
+        printw("\n");
     }
 
     attroff(COLOR_PAIR(((i+j)%2)+1));
@@ -178,18 +183,78 @@ void printBoard(board_t *board){
     refresh();
 }
 
-//it should be garenteed that a piece is present on fromx/fromy (IT ISN'T)
-int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
+
+int boardCoords(int *x, int *y){
+    if(*x < 0 || *y < 0 || *x > 9 || *y > 9)
+    {
+        mvprintw(1, 20, "invalid position");    
+        return false;
+    }
+
+    *y = 9-*y;
+        
+    mvprintw(1, 20, "valid position %d %d", *x, *y);
+
+    return true;
+}
+
+
+int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
+    int player = board->cell[fromx][fromy]->player;
+    //no piece in starting position or arriving position already occupied
+    mvprintw(14, 0, "%d %d %d %d", fromx, fromy, tox, toy);
+    refresh();
+    if(!player || board->cell[tox][toy]->player)
+        return false;
+
+    if(fromy == toy && abs(fromx - tox) == 1)
+        return true;
+
+    //TODO: can be written better
+    if(fromx == tox){
+        if(player == 1 && fromy - toy == 1)
+            return true;
+        if(player == 2 && fromy - toy == -1)
+            return true;
+    }
+
+    //TODO:eating pieces
+
+
     return false;
 }
 
+//It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove). //FIXME:
+//It shoud garenteed that fromx/fromy and tox/toy are valid board cooridinates. (IT ISN'T) (it is being checked here) //FIXME:
+//Returns whethers the move has succesfully been done.
+int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
+    if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 9 || fromy > 9 || tox > 9 || toy > 9)
+        return false;
+
+    if(!validMove(board, fromx, fromy, tox, toy))
+        return false;
+
+    piece_t *piece = board->cell[fromx][fromy];
+
+    piece->x = tox;
+    piece->y = toy;
+    
+    board->cell[tox][toy] = piece;
+    board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
+
+
+    //TODO:eating pieces
+
+    return true;
+}
+
 void  printList(piece_t *l){
-    piece_t *p = l;
+    piece_t *piece = l;
     move(17, 0);
 
-    while(p){
-        printw("%d %d %d  \n", p->x, p->y, p->player);
-        p=p->next;
+    while(piece){
+        printw("%d %d %d  \n", piece->x, piece->y, piece->player);
+        piece=piece->next;
     }
 
     refresh();

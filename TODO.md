@@ -16,6 +16,8 @@
 
 - mouse and keyboard
 
+- move position of the board
+
 
 # WHO CARES #
 - making a brown color for the board
