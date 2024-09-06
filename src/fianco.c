@@ -9,27 +9,28 @@ the board is represented with a linked hashmap:
     If the cell has a piece on it, then it will be
     present in the corrisponding list;
 */
-typedef struct list_elem list_elem;
-struct list_elem{
+typedef struct piece_t piece_t;
+struct piece_t{
     int x;
     int y;
     int player;
-    list_elem *prev;    //FIXME: if these pointers remane here, I can't use the board as a hash
-    list_elem *next;
+    piece_t *prev;    //FIXME: if these pointers remane here, I can't use the board as a hash
+    piece_t *next;
 };
 
 typedef struct board_t{
-    list_elem *cell[9][9];
-    list_elem *white_head;
-    list_elem *white_tail;
-    list_elem *black_head;
-    list_elem *black_tail;
+    piece_t *cell[9][9];
+    piece_t *head[2];
+    piece_t *tail[2];
 }board_t;
 
 
 board_t *initializeBoard();
 void printBoard(board_t *board);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
+
+//debug functions
+void  printList(piece_t *l);
 
 
 int main(){
@@ -86,7 +87,7 @@ int main(){
         toy = mevent.x/2;
         refresh();
         
-        if(!movePiece(board, fromx, fromy, tox, toy));{
+        if(!movePiece(board, fromx, fromy, tox, toy)){
             mvprintw(11, 2, "INVALID MOVE");
         }
 
@@ -106,12 +107,6 @@ int main(){
 board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
-    board->black_head = NULL;
-    board->black_tail = NULL;
-    board->white_head = NULL;
-    board->white_tail = NULL;
-
-
     //setting up the board
     int init_board[9][9] = 
     {
@@ -126,19 +121,37 @@ board_t *initializeBoard(){
         {2, 2, 2, 2, 2, 2, 2, 2, 2}
     };
 
+    piece_t *last[2];
+    last[0] = NULL;
+    last[1] = NULL;
+
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-            list_elem *elem = (list_elem *)malloc(sizeof(list_elem));
-            elem->x = i;
-            elem->y = j;
-            elem->player = init_board[i][j];
-            elem->prev = NULL; //TODO:
-            elem->next = NULL;
+                piece_t *elem = (piece_t *)malloc(sizeof(piece_t));
+                elem->x = i;
+                elem->y = j;
+                elem->player = init_board[i][j];
 
-            board->cell[i][j] = elem;
+                //if piece add to list
+                if(init_board[i][j] != 0){
+                    elem->prev = last[elem->player];
+
+                    if(last[elem->player-1])
+                        last[elem->player-1]->next = elem;
+                    else
+                        board->head[elem->player-1] = elem;
+                    
+                    elem->next = NULL;
+                    last[elem->player-1] = elem;
+
+                }
+
+                board->cell[i][j] = elem;
         }
     }
 
+    board->tail[1] = last[1];
+    board->tail[2] = last[2];
 
     return board;
 }
@@ -156,8 +169,8 @@ void printBoard(board_t *board){
                 printw("%s", "\u26C2 ");
             else
                 printw("  ");
+            attroff(COLOR_PAIR(((i+j)%2)+1));
         }
-        attroff(COLOR_PAIR(((i+j)%2)+1));
         printw("\n  ");
     }
 
@@ -168,5 +181,5 @@ void printBoard(board_t *board){
 
 //it should be garenteed that a piece is present on fromx/fromy (IT ISN'T)
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
-    
+    return false;
 }

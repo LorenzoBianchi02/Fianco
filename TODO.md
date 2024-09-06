@@ -4,6 +4,7 @@
 
 
 ## IF TIME ##
+- linked list "library"
 
 - popcount, if not available keep track of number of pieces
 
@@ -12,6 +13,8 @@
 - change list_elem name to piece
 
 - changing colors of selected piece
+
+- mouse and keyboard
 
 
 # WHO CARES #
