@@ -11,6 +11,8 @@
 
 - change list_elem name to piece
 
+- changing colors of selected piece
+
 
 # WHO CARES #
 - making a brown color for the board

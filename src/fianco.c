@@ -29,6 +29,7 @@ typedef struct board_t{
 
 board_t *initializeBoard();
 void printBoard(board_t *board);
+int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 
 
 int main(){
@@ -44,14 +45,16 @@ int main(){
 
 	mousemask(ALL_MOUSE_EVENTS, NULL);
 
-    // init_color(COLOR_GREEN, 158, 93, 30);
-    // init_color(COLOR_WHITE, 205, 170, 125);
+    init_color(COLOR_GREEN, 619, 365, 118);
+    init_color(COLOR_YELLOW, 804, 667, 490);
     
-    init_pair(1, COLOR_BLACK, COLOR_WHITE); //board color 1
-    init_pair(2, COLOR_BLACK, COLOR_BLUE);  //board color 2
-    init_pair(3, COLOR_BLACK, COLOR_CYAN);
-    init_pair(4, COLOR_BLACK, COLOR_BLACK);
-    init_pair(5, COLOR_BLACK, COLOR_MAGENTA);   //TODO: remove not used pairs
+    //TODO: remove not used pairs
+    // NB: be carefull when changing the order
+    init_pair(1, COLOR_BLACK, COLOR_YELLOW);   //board color 1
+    init_pair(2, COLOR_BLACK, COLOR_GREEN);   //board color 2
+    init_pair(4, COLOR_WHITE, COLOR_YELLOW);    //piece selected 1
+    init_pair(3, COLOR_WHITE, COLOR_GREEN);     //piece selected 2
+    init_pair(5, COLOR_BLACK, COLOR_MAGENTA);
     init_pair(6, COLOR_BLACK, COLOR_RED);
 
     init_color(COLOR_BLACK, 0, 0, 0);
@@ -66,15 +69,15 @@ int main(){
 
     int fromx, fromy, tox, toy;
 
-
     while(true){
-        getch();
-        getmouse(&mevent);
-        fromx = mevent.y;
-        fromy = mevent.x/2;
-        refresh();
+        // do{
+            getch();
+            getmouse(&mevent);
+            fromx = mevent.y;
+            fromy = mevent.x/2;
+        // }while(!board->cell[fromx][fromy]->player);      //FIXME: crashes
 
-        mvchgat(fromx, fromy*2, 2, A_NORMAL, 3, NULL);
+        mvchgat(fromx, fromy*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
 
         getch();
         getmouse(&mevent);
@@ -82,15 +85,11 @@ int main(){
         toy = mevent.x/2;
         refresh();
         
-        clear();
+        if(!movePiece(board, fromx, fromy, tox, toy));{
+            mvprintw(11, 2, "INVALID MOVE");
+        }
 
-        // if(move_piece(&board, from, to))
-        //     board.info.turn++;
-        // else{
-        //     mvprintw(14, 0, "INVALID MOVE");
-        // }
-
-        printBoard(board);        
+        mvchgat(fromx, fromy*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
     }
 
 
@@ -164,4 +163,9 @@ void printBoard(board_t *board){
     attroff(COLOR_PAIR(((i+j)%2)+1));
 
     refresh();
+}
+
+//it is garenteed that a piece is present on fromx/fromy
+int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
+    return false;
 }
