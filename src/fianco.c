@@ -211,26 +211,29 @@ int boardCoords(int *x, int *y){
 }
 
 
+//returns 0 if invalid, 1 for a normal move, 2 for a capture
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     //no piece in starting position or arriving position already occupied
     if(!board->cell[fromx][fromy])
-        return false;
+        return FALSE;
 
     if(board->cell[tox][toy])
-        return false;
+        return FALSE;
 
     int player = board->cell[fromx][fromy]->player;
 
     if(fromy == toy && abs(fromx - tox) == 1)
-        return true;
+        return 1;
 
     //TODO: can be written better
     if(fromx == tox){
         if(player == 1 && toy - fromy == 1)
-            return true;
+            return 1;
         if(player == 2 && toy - fromy == -1)
-            return true;
+            return 1;
     }
+
+    if()WAS WORKING HERE
 
     //TODO: eating pieces
 
@@ -244,20 +247,25 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return false;
 
-    if(!validMove(board, fromx, fromy, tox, toy))
+    int move = validMove(board, fromx, fromy, tox, toy);
+    if(!move)
         return false;
 
     mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
     refresh();
+
     piece_t *piece = board->cell[fromx][fromy];
-
-    piece->x = tox;
-    piece->y = toy;
     
-    board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
-    board->cell[tox][toy] = piece;
+    if(move == 1){
+        piece->x = tox;
+        piece->y = toy;
+        
+        board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
+        board->cell[tox][toy] = piece;
+    }else if(move == 2){
+        //TODO:eating pieces
+    }
 
-    //TODO:eating pieces
 
     return true;
 }

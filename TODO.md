@@ -1,6 +1,6 @@
 ### PRIORITY# ##
-- check valide move
-- player move
+- check valide move (missing capture)
+- player move (turns)
 
 
 ## IF TIME ##
