@@ -18,6 +18,8 @@
 
 - move position of the board
 
+- remove hashtesting.c
+
 
 # WHO CARES #
 - making a brown color for the board

@@ -22,6 +22,8 @@ typedef struct board_t{
     piece_t *cell[9][9];
     piece_t *head[2];
     piece_t *tail[2];
+
+    int turn;
 }board_t;
 
 
@@ -68,11 +70,11 @@ int main(){
     //---------MAIN---------//
     board_t *board = initializeBoard();
 
-    printBoard(board);
 
     int fromx, fromy, tox, toy;
 
     while(true){
+        printBoard(board);
         do{
             getch();
             getmouse(&mevent);
@@ -85,7 +87,7 @@ int main(){
 
         // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
-        mvchgat(9-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
+        mvchgat(8-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
 
         getch();
         getmouse(&mevent);
@@ -93,12 +95,18 @@ int main(){
         toy = mevent.y;
         refresh();
         boardCoords(&tox, &toy);
+
         
         if(!movePiece(board, fromx, fromy, tox, toy)){
-            mvprintw(11, 2, "INVALID MOVE"); //TODO: when clicking outside of screen it shoulnd't say this (handle this in the functions)
-        }
+            mvprintw(11, 2, "INVALID MOVE %d %d", tox, toy); //TODO: when clicking outside of screen it shoulnd't say this (handle this in the functions)
+        }else
+            mvprintw(11, 2, "VALID MOVE  ");
 
-        mvchgat(9 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+        mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+
+        board->turn++;
+
+        refresh();
     }
 
     getch();
@@ -122,7 +130,7 @@ board_t *initializeBoard(){
         {1, 0, 0, 1, 0, 2, 0, 0, 2},
         {1, 0, 1, 0, 0, 0, 2, 0, 2},
         {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2}
     };
 
     piece_t *last[2];
@@ -131,13 +139,13 @@ board_t *initializeBoard(){
 
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-                piece_t *elem = (piece_t *)malloc(sizeof(piece_t));
-                elem->x = i;
-                elem->y = j;
-                elem->player = init_board[j][i];
-
                 //if piece add to list
                 if(init_board[j][i] != 0){
+                    piece_t *elem = (piece_t *)malloc(sizeof(piece_t));
+                    elem->x = i;
+                    elem->y = j;
+                    elem->player = init_board[j][i];
+
                     elem->prev = last[elem->player];
 
                     if(last[elem->player-1])
@@ -147,33 +155,38 @@ board_t *initializeBoard(){
                     
                     elem->next = NULL;
                     last[elem->player-1] = elem;
-                }
+                    board->cell[j][i] = elem;
+                }else
+                    board->cell[j][i] = NULL;
 
-                board->cell[j][i] = elem;
         }
     }
 
     board->tail[1] = last[1];
     board->tail[2] = last[2];
 
+    board->turn = 0;
+
     return board;
 }
 
 void printBoard(board_t *board){
-    erase();
+    // erase();
     int i, j;
     move(0, 0);
 
-    for(j=9; j>=0; j--){
+    for(j=8; j>=0; j--){
         for(i=0; i<9; i++){
-            attron(COLOR_PAIR(((i+j)%2)+1));
-            if(board->cell[i][j]->player == 1)
-                printw("%s", "\u26C0 ");
-            else if(board->cell[i][j]->player == 2)
-                printw("%s", "\u26C2 ");
-            else
-                printw("  ");
-            attroff(COLOR_PAIR(((i+j)%2)+1));
+                attron(COLOR_PAIR(((i+j)%2)+1));
+                if(board->cell[i][j]){
+                    if(board->cell[i][j]->player == 1)
+                        printw("%s", "\u26C0 ");
+                    else if(board->cell[i][j]->player == 2)
+                        printw("%s", "\u26C2 ");
+                }else
+                    printw("  ");
+                attroff(COLOR_PAIR(((i+j)%2)+1));
+            
         }
         printw("\n");
     }
@@ -185,13 +198,12 @@ void printBoard(board_t *board){
 
 
 int boardCoords(int *x, int *y){
-    if(*x < 0 || *y < 0 || *x > 9 || *y > 9)
-    {
+    if(*x < 0 || *y < 0 || *x > 8 || *y > 8){
         mvprintw(1, 20, "invalid position");    
         return false;
     }
 
-    *y = 9-*y;
+    *y = 8-*y;
         
     mvprintw(1, 20, "valid position %d %d", *x, *y);
 
@@ -200,26 +212,27 @@ int boardCoords(int *x, int *y){
 
 
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
-    int player = board->cell[fromx][fromy]->player;
     //no piece in starting position or arriving position already occupied
-    mvprintw(14, 0, "%d %d %d %d", fromx, fromy, tox, toy);
-    refresh();
-    if(!player || board->cell[tox][toy]->player)
+    if(!board->cell[fromx][fromy])
         return false;
+
+    if(board->cell[tox][toy])
+        return false;
+
+    int player = board->cell[fromx][fromy]->player;
 
     if(fromy == toy && abs(fromx - tox) == 1)
         return true;
 
     //TODO: can be written better
     if(fromx == tox){
-        if(player == 1 && fromy - toy == 1)
+        if(player == 1 && toy - fromy == 1)
             return true;
-        if(player == 2 && fromy - toy == -1)
+        if(player == 2 && toy - fromy == -1)
             return true;
     }
 
-    //TODO:eating pieces
-
+    //TODO: eating pieces
 
     return false;
 }
@@ -228,20 +241,21 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
 //It shoud garenteed that fromx/fromy and tox/toy are valid board cooridinates. (IT ISN'T) (it is being checked here) //FIXME:
 //Returns whethers the move has succesfully been done.
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
-    if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 9 || fromy > 9 || tox > 9 || toy > 9)
+    if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return false;
 
     if(!validMove(board, fromx, fromy, tox, toy))
         return false;
 
+    mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
+    refresh();
     piece_t *piece = board->cell[fromx][fromy];
 
     piece->x = tox;
     piece->y = toy;
     
-    board->cell[tox][toy] = piece;
     board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
-
+    board->cell[tox][toy] = piece;
 
     //TODO:eating pieces
 
