@@ -232,10 +232,14 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
         if(player == 2 && toy - fromy == -1)
             return 1;
     }
-
-    if()WAS WORKING HERE
-
-    //TODO: eating pieces
+    //TODO: this aswell, to much duplication
+    if(abs(fromx - tox) == 2 && abs(fromy - toy) == 2){
+        if(player == 1 && toy - fromy == 2){
+            return 2;
+        }
+        if(player == 2 && toy - fromy == -2)
+            return 2;
+    }
 
     return false;
 }
@@ -263,9 +267,11 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
         board->cell[tox][toy] = piece;
     }else if(move == 2){
-        //TODO:eating pieces
+        int sign = (fromx - tox)/2;
+        board->cell[fromx][fromy] = NULL;
+        board->cell[fromx+sign][fromy+sign] = NULL;
+        board->cell[fromx+sign*2][fromy+sign*2] = piece;
     }
-
 
     return true;
 }
