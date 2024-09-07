@@ -267,10 +267,10 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
         board->cell[tox][toy] = piece;
     }else if(move == 2){
-        int sign = (fromx - tox)/2;
+        int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
         board->cell[fromx][fromy] = NULL;
-        board->cell[fromx+sign][fromy+sign] = NULL;
-        board->cell[fromx+sign*2][fromy+sign*2] = piece;
+        board->cell[fromx+signx][fromy+signy] = NULL;
+        board->cell[fromx+signx*2][fromy+signy*2] = piece;
     }
 
     return true;

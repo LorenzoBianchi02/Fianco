@@ -1,5 +1,5 @@
 ### PRIORITY# ##
-- check valide move (missing capture)
+- check valide move (you have to capture)
 - player move (turns)
 
 
