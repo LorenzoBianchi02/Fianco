@@ -75,6 +75,9 @@ int main(){
 
     while(true){
         printBoard(board);
+
+        printList(board->head[0]);
+
         do{
             getch();
             getmouse(&mevent);
@@ -83,7 +86,7 @@ int main(){
             refresh();
             mvprintw(10, 0, "%d %d", fromx, fromy);
             refresh();
-        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy]->player);
+        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy]);
 
         // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
@@ -216,7 +219,6 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     //no piece in starting position or arriving position already occupied
     if(!board->cell[fromx][fromy])
         return FALSE;
-
     if(board->cell[tox][toy])
         return FALSE;
 
@@ -251,12 +253,13 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return false;
 
+    mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
+    refresh();
+    
     int move = validMove(board, fromx, fromy, tox, toy);
     if(!move)
         return false;
 
-    mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
-    refresh();
 
     piece_t *piece = board->cell[fromx][fromy];
     
