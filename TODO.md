@@ -9,6 +9,8 @@
 - handle a player having no pieces
 - handle a piece reaching the end of the board (win)
 
+- use coords (either just x, y; or even fromx/fromy/tox/toy)
+
 
 ## IF TIME ##
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient

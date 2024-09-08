@@ -84,13 +84,25 @@ int main(){
     while(true){
         printBoard(board);
 
+        int tmp = 0;
+        move(13, 0);
+        printw("CAPTURES: \n");
+        getMoves(board, 1);
+        refresh();
+        while(board->moves[1][tmp][0] != -1){
+            printw("%d %d %d %d\n", board->moves[0][tmp][0], board->moves[0][tmp][1], board->moves[0][tmp][2], board->moves[0][tmp][3]);
+            refresh();
+            tmp++;
+        }
+        printw("DONE %d %d\n", tmp, board->moves[1][tmp][0]);
+        refresh();
+        getch();
+
         do{
             getch();
             getmouse(&mevent);
             fromx = mevent.x/2;
             fromy = mevent.y;
-            refresh();
-            mvprintw(10, 0, "%d %d", fromx, fromy);
             refresh();
         }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || board->cell[fromx][fromy]->player != turn % 2 + 1);
 
@@ -106,14 +118,11 @@ int main(){
         boardCoords(&tox, &toy);
 
         
-        if(!movePiece(board, fromx, fromy, tox, toy)){
-            mvprintw(11, 2, "INVALID MOVE %d %d", tox, toy);
-        }else
-            mvprintw(11, 2, "VALID MOVE  ");
+        if(movePiece(board, fromx, fromy, tox, toy))
+            turn++;
 
         mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
 
-        turn++;
         refresh();
     }
 
@@ -203,6 +212,8 @@ void printBoard(board_t *board){
     refresh();
 }
 
+
+
 //moves a piece can make
 int _moves[2][5][2] = {
     {{-1, 0}, {1, 0}, {0, 1}, {-2, 2}, {2, 2}},
@@ -225,8 +236,11 @@ void getMoves(board_t *board, int player){
         for(int i=0; i<5; i++){
             tox = fromx + _moves[player][i][0];
             toy = fromy + _moves[player][i][1];
-            
-            if(move = validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+            move = validMove(board, fromx, fromy, tox, toy);
+            if(move)
+                printw("%d: %d %d %d %d\n", move, fromx, fromy, tox, toy);
+
+            if(move){ //REWRITE: not very elegant
                 board->moves[move - 1][size[move - 1]][0] = fromx;
                 board->moves[move - 1][size[move - 1]][0] = fromy;
                 board->moves[move - 1][size[move - 1]][0] = tox;
@@ -236,6 +250,9 @@ void getMoves(board_t *board, int player){
 
         piece=piece->next;
     }
+
+    board->moves[0][size[0]][0] = -1;
+    board->moves[1][size[0]][0] = -1;
 }
 
 
@@ -243,15 +260,11 @@ void getMoves(board_t *board, int player){
 
 //tranforms stdscr coords to [9][9] coords
 int boardCoords(int *x, int *y){
-    if(*x < 0 || *y < 0 || *x > 8 || *y > 8){
-        mvprintw(1, 20, "invalid position");    
+    if(*x < 0 || *y < 0 || *x > 8 || *y > 8)
         return false;
-    }
 
     *y = 8-*y;
         
-    mvprintw(1, 20, "valid position %d %d", *x, *y);
-
     return true;
 }
 
