@@ -14,7 +14,7 @@ struct piece_t{
     int x;
     int y;
     int player;
-    piece_t *prev;    //FIXME: if these pointers remane here, I can't use the board as a hash
+    piece_t *prev;    //FIXME: if these pointers remain here, I can't use the board as a hash (the pointers aren't always the same, see TODO for a possible solution)
     piece_t *next;
 };
 
@@ -28,6 +28,8 @@ typedef struct board_t{
 
 
 board_t *initializeBoard();
+
+//human functions
 void printBoard(board_t *board);
 int boardCoords(int *x, int *y);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
@@ -69,7 +71,7 @@ int main(){
 
     //---------MAIN---------//
     board_t *board = initializeBoard();
-
+    int turn = 0;
 
     int fromx, fromy, tox, toy;
 
@@ -101,7 +103,7 @@ int main(){
 
         
         if(!movePiece(board, fromx, fromy, tox, toy)){
-            mvprintw(11, 2, "INVALID MOVE %d %d", tox, toy); //TODO: when clicking outside of screen it shoulnd't say this (handle this in the functions)
+            mvprintw(11, 2, "INVALID MOVE %d %d", tox, toy);
         }else
             mvprintw(11, 2, "VALID MOVE  ");
 
@@ -118,7 +120,7 @@ int main(){
     return 0;
 }
 
-
+//initializes the board with the correct pieces, and allocates needed memory
 board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
@@ -173,6 +175,7 @@ board_t *initializeBoard(){
     return board;
 }
 
+//prints the board on the screen (currently at the positions 0 0 of stdscr)
 void printBoard(board_t *board){
     // erase();
     int i, j;
@@ -199,7 +202,7 @@ void printBoard(board_t *board){
     refresh();
 }
 
-
+//tranforms stdscr coords to [9][9] coords
 int boardCoords(int *x, int *y){
     if(*x < 0 || *y < 0 || *x > 8 || *y > 8){
         mvprintw(1, 20, "invalid position");    
@@ -246,19 +249,20 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     return false;
 }
 
-//It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove). //FIXME:
-//It shoud garenteed that fromx/fromy and tox/toy are valid board cooridinates. (IT ISN'T) (it is being checked here) //FIXME:
+//FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
+//FIXME: It shoud garenteed that fromx/fromy and tox/toy are valid board cooridinates. (IT ISN'T) (it is being checked here)
+//TODO: this function is to ineficient to use for the model
 //Returns whethers the move has succesfully been done.
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
-        return false;
+        return FALSE;
 
     mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
     refresh();
     
     int move = validMove(board, fromx, fromy, tox, toy);
     if(!move)
-        return false;
+        return FALSE;
 
 
     piece_t *piece = board->cell[fromx][fromy];
@@ -267,16 +271,21 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         piece->x = tox;
         piece->y = toy;
         
-        board->cell[fromx][fromy] = NULL; //FIXME: can I put piece here instead of board->ce...?
+        board->cell[fromx][fromy] = NULL; //TODO: can I put piece here instead of board->ce...?
         board->cell[tox][toy] = piece;
     }else if(move == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
+
+        //this should probably go in validMove (or just put that function in here)
+        if(board->cell[fromx+signx][fromy+signy] == NULL || board->cell[fromx+signx][fromy+signy]->player == board->cell[fromx][fromy]->player)
+            return FALSE;
+
         board->cell[fromx][fromy] = NULL;
         board->cell[fromx+signx][fromy+signy] = NULL;
         board->cell[fromx+signx*2][fromy+signy*2] = piece;
     }
 
-    return true;
+    return TRUE;
 }
 
 void  printList(piece_t *l){
