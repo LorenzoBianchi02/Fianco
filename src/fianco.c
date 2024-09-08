@@ -22,8 +22,6 @@ typedef struct board_t{
     piece_t *cell[9][9];
     piece_t *head[2];
     piece_t *tail[2];
-
-    int turn;
 }board_t;
 
 
@@ -35,7 +33,7 @@ int boardCoords(int *x, int *y);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 
-//debug functions
+//debug functions (TODO: will at some point have to be removed)
 void  printList(piece_t *l);
 
 
@@ -78,8 +76,6 @@ int main(){
     while(true){
         printBoard(board);
 
-        printList(board->head[0]);
-
         do{
             getch();
             getmouse(&mevent);
@@ -88,7 +84,7 @@ int main(){
             refresh();
             mvprintw(10, 0, "%d %d", fromx, fromy);
             refresh();
-        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy]);
+        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || board->cell[fromx][fromy]->player != turn % 2 + 1);
 
         // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
@@ -109,8 +105,7 @@ int main(){
 
         mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
 
-        board->turn++;
-
+        turn++;
         refresh();
     }
 
@@ -169,8 +164,6 @@ board_t *initializeBoard(){
 
     board->tail[1] = last[1];
     board->tail[2] = last[2];
-
-    board->turn = 0;
 
     return board;
 }
@@ -288,6 +281,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     return TRUE;
 }
 
+//prints the coords of a players pieces
 void  printList(piece_t *l){
     piece_t *piece = l;
     move(17, 0);
