@@ -1,0 +1,28 @@
+{
+    "todohighlight.keywords": [
+        {
+            "text": "NOTE:",
+            "color": "black",
+            "backgroundColor": "pink",
+            "overviewRulerColor": "pink"
+        },
+        {
+            "text": "END:",
+            "color": "white",
+            "backgroundColor": "blue",
+            "overviewRulerColor": "blue"
+        }, {
+            "text": "ERROR:",
+            "color": "white",
+            "backgroundColor": "red",
+            "overviewRulerColor": "red"
+        }, {
+            "text": "REWRITE:",
+            "color": "white",
+            "backgroundColor": "green",
+            "overviewRulerColor": "green"
+        }
+        
+
+    ]
+}
