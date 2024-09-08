@@ -14,7 +14,7 @@ struct piece_t{
     int x;
     int y;
     int player;
-    piece_t *prev;    //FIXME: if these pointers remain here, I can't use the board as a hash (the pointers aren't always the same, see TODO for a possible solution)
+    piece_t *prev;    //NOTE: if these pointers remain here, I can't use the board as a hash (the pointers aren't always the same, see TODO for a possible solution)
     piece_t *next;
 };
 
@@ -22,18 +22,26 @@ typedef struct board_t{
     piece_t *cell[9][9];
     piece_t *head[2];
     piece_t *tail[2];
+
+    int moves[2][75][4]; //moves a player can make: [2] capture/move
+                         //                         [75] buffer
+                         //                         [2] x, y    
 }board_t;
 
 
 board_t *initializeBoard();
 
-//human functions
+//general functions
 void printBoard(board_t *board);
-int boardCoords(int *x, int *y);
+void getMoves(board_t *board, int player);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 
-//debug functions (TODO: will at some point have to be removed)
+
+//human functions
+int boardCoords(int *x, int *y);
+
+//debug functions (END: will at some point have to be removed)
 void  printList(piece_t *l);
 
 
@@ -53,7 +61,7 @@ int main(){
     init_color(COLOR_GREEN, 619, 365, 118);
     init_color(COLOR_YELLOW, 804, 667, 490);
     
-    //TODO: remove not used pairs
+    //END: remove not used pairs
     // NB: be carefull when changing the order
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);    //board color 1
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
@@ -195,6 +203,44 @@ void printBoard(board_t *board){
     refresh();
 }
 
+//moves a piece can make
+int _moves[2][5][2] = {
+    {{-1, 0}, {1, 0}, {0, 1}, {-2, 2}, {2, 2}},
+    {{-1, 0}, {1, 0}, {0, -1}, {-2, -2}, {2, -2}}};
+
+//TODO: testing, print the moves
+//populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
+void getMoves(board_t *board, int player){
+    player--;
+
+    piece_t *piece = board->head[player];
+    int size[2] = {0, 0};
+    int fromx, fromy, move;
+    int tox, toy;
+
+    while(piece){
+        fromx = piece->x;
+        fromy = piece->y;
+
+        for(int i=0; i<5; i++){
+            tox = fromx + _moves[player][i][0];
+            toy = fromy + _moves[player][i][1];
+            
+            if(move = validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+                board->moves[move - 1][size[move - 1]][0] = fromx;
+                board->moves[move - 1][size[move - 1]][0] = fromy;
+                board->moves[move - 1][size[move - 1]][0] = tox;
+                board->moves[move - 1][size[move - 1]][0] = toy;
+            }
+        }
+
+        piece=piece->next;
+    }
+}
+
+
+
+
 //tranforms stdscr coords to [9][9] coords
 int boardCoords(int *x, int *y){
     if(*x < 0 || *y < 0 || *x > 8 || *y > 8){
@@ -212,6 +258,10 @@ int boardCoords(int *x, int *y){
 
 //returns 0 if invalid, 1 for a normal move, 2 for a capture
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
+    //check if move is inbounds //FIXME: move the check of fromx/fromy to main
+    if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
+        return FALSE;
+
     //no piece in starting position or arriving position already occupied
     if(!board->cell[fromx][fromy])
         return FALSE;
@@ -223,15 +273,19 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     if(fromy == toy && abs(fromx - tox) == 1)
         return 1;
 
-    //TODO: can be written better
+    //REWRITE: can be written better
     if(fromx == tox){
         if(player == 1 && toy - fromy == 1)
             return 1;
         if(player == 2 && toy - fromy == -1)
             return 1;
     }
-    //TODO: this aswell, to much duplication
+    //REWRITE: this aswell, to much duplication
     if(abs(fromx - tox) == 2 && abs(fromy - toy) == 2){
+        int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
+        if(board->cell[fromx+signx][fromy+signy] == NULL || board->cell[fromx+signx][fromy+signy]->player == board->cell[fromx][fromy]->player)
+            return FALSE;
+
         if(player == 1 && toy - fromy == 2){
             return 2;
         }
@@ -239,24 +293,16 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
             return 2;
     }
 
-    return false;
+    return FALSE;
 }
 
-//FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
-//FIXME: It shoud garenteed that fromx/fromy and tox/toy are valid board cooridinates. (IT ISN'T) (it is being checked here)
-//TODO: this function is to ineficient to use for the model
 //Returns whethers the move has succesfully been done.
+//FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
+//TODO: this function is too ineficient to use for the model
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
-    if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
-        return FALSE;
-
-    mvprintw(14, 0, "move checking: %d %d %d %d", fromx, fromy, tox, toy);
-    refresh();
-    
-    int move = validMove(board, fromx, fromy, tox, toy);
+    int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move)
         return FALSE;
-
 
     piece_t *piece = board->cell[fromx][fromy];
     
@@ -264,14 +310,10 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         piece->x = tox;
         piece->y = toy;
         
-        board->cell[fromx][fromy] = NULL; //TODO: can I put piece here instead of board->ce...?
+        board->cell[fromx][fromy] = NULL; //REWRITE: can I put piece here instead of board->ce...?
         board->cell[tox][toy] = piece;
     }else if(move == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
-
-        //this should probably go in validMove (or just put that function in here)
-        if(board->cell[fromx+signx][fromy+signy] == NULL || board->cell[fromx+signx][fromy+signy]->player == board->cell[fromx][fromy]->player)
-            return FALSE;
 
         board->cell[fromx][fromy] = NULL;
         board->cell[fromx+signx][fromy+signy] = NULL;
