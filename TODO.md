@@ -1,4 +1,5 @@
 ### PRIORITY# ##
+- functions to add/remove/move from list
 - check valide move (you have to capture)
 
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 

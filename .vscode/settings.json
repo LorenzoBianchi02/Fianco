@@ -7,10 +7,15 @@
             "overviewRulerColor": "pink"
         },
         {
-            "text": "END:",
+            "text": "INEF:",
             "color": "white",
             "backgroundColor": "blue",
             "overviewRulerColor": "blue"
+        },{
+            "text": "END:",
+            "color": "white",
+            "backgroundColor": "purple",
+            "overviewRulerColor": "purple"
         }, {
             "text": "ERROR:",
             "color": "white",
