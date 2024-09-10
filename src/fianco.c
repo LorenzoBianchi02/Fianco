@@ -83,10 +83,10 @@ int main(){
     while(TRUE){
         erase(); //FIXME: remove
         printBoard(board);
-        move(12, 0);
-        printw("LIST 0: ");
+        move(10, 0);
+        printw("LIST WHITE: ");
         printList(board, 0);
-        printw("LIST 1: ");
+        printw("LIST BLACK: ");
         printList(board, 1);
         printw("\n");
         refresh();
@@ -110,6 +110,8 @@ int main(){
             size[0]++;
         }
         printw("DONE %d\n", size[0]);
+
+        printw("%d\n", validMove(board, 7, 7, 8, 7));
     
         refresh();
 
@@ -324,8 +326,8 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     
     if(move == 1){
         //change coords
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][1] = toy;
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
         board->cell[tox][toy][0] = board->cell[fromx][fromy][0];
@@ -365,10 +367,10 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
 }
 
 void printList(board_t *board, int list){
-    int i = 0;
-    for(i=0; i<board->piece_list_size[list]; i++){
+    for(int i=0; i<board->piece_list_size[list]; i++){
         printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
     }
+    printw("(%d) ", board->piece_list_size[list]);
     printw("\n");
 
     refresh();
