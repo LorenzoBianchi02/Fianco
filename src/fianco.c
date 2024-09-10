@@ -31,14 +31,15 @@ typedef struct board_t{
 board_t *initializeBoard();
 
 //general functions
-void printBoard(board_t *board);
 void getMoves(board_t *board, int player);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 
 
 //human functions
+void printBoard(board_t *board);
 int boardCoords(int *x, int *y);
+int checkWin(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
 void printList(board_t *board, int list);
@@ -66,8 +67,8 @@ int main(){
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
     init_pair(4, COLOR_WHITE, COLOR_YELLOW);    //piece selected 1
     init_pair(3, COLOR_WHITE, COLOR_GREEN);     //piece selected 2
-    init_pair(5, COLOR_BLACK, COLOR_MAGENTA);
-    init_pair(6, COLOR_BLACK, COLOR_RED);
+    init_pair(6, COLOR_BLACK, COLOR_BLACK);
+    init_pair(5, COLOR_BLACK, COLOR_WHITE);
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
@@ -80,9 +81,13 @@ int main(){
 
     int fromx, fromy, tox, toy;
 
-    while(TRUE){
+    while(!checkWin(board)){
         erase(); //FIXME: remove
         printBoard(board);
+
+        mvprintw(1, 20, "Player's turn:   \n");
+        mvchgat(1, 35, 2, A_NORMAL, turn%2+5, NULL);
+
         move(10, 0);
         printw("LIST WHITE: ");
         printList(board, 0);
@@ -141,6 +146,14 @@ int main(){
         refresh();
     }
 
+    erase();
+    printBoard(board);
+    move(11, 0);
+    int winner = checkWin(board);
+    printw("   PLAYER %d won", winner);
+    printw("\n\n   (Press any key to leave)");
+    refresh();
+
     getch();
     endwin();
 
@@ -155,13 +168,13 @@ board_t *initializeBoard(){
     int init_board[9][9] = 
     {
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 1, 0, 0, 0, 0, 0, 2, 0},
-        {0, 0, 1, 0, 0, 0, 2, 0, 0},
+        {0, 1, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 1, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 1, 0, 2, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 1, 0, 2, 0, 0, 0},
-        {0, 0, 1, 0, 0, 0, 2, 0, 0},
-        {0, 1, 0, 0, 0, 0, 0, 2, 0},
+        {0, 0, 1, 0, 0, 0, 0, 0, 0},
+        {0, 1, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0}
     };
 
@@ -371,4 +384,32 @@ void printList(board_t *board, int list){
     printw("\n");
 
     refresh();
+}
+
+//NOTE: ONLY FOR HUMAN: return winning player (0 for none)
+int checkWin(board_t *board){ //TODO: when there are < 8 pieces I should check piecelist instead (this is just human version)
+    //end of board reached
+    for(int i=0; i<9; i++){
+        if(PLAYER(i, 8) == 1)
+            return 1;
+        if(PLAYER(i, 0) == 2)
+            return 2;
+    }
+
+    //no more pieces
+    if(!board->piece_list_size[0])
+        return 2;
+    if(!board->piece_list_size[1])
+        return 1;
+
+    //stale mate ERROR: if black has no moves during white's turn he still loses
+    getMoves(board, 1);
+    if(board->moves[0][0][0] == -1 && board->moves[1][0][0] == -1)
+        return 2;
+
+    getMoves(board, 2);
+    if(board->moves[0][0][0] == -1 && board->moves[1][0][0] == -1)
+        return 1;
+
+    return 0;
 }
