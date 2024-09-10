@@ -88,28 +88,28 @@ int main(){
         printList(board, 0);
         printw("LIST 1: ");
         printList(board, 1);
+        printw("\n");
         refresh();
-        getch();
 
-        int tmp[2] = {0, 0};
+        int size[2] = {0, 0};
         getMoves(board, turn%2+1);
 
         printw("CAPTURES: \n");
         refresh();
-        while(board->moves[1][tmp[1]][0] != -1){
-            printw("%d %d %d %d\n", board->moves[1][tmp[1]][0], board->moves[1][tmp[1]][1], board->moves[1][tmp[1]][2], board->moves[1][tmp[1]][3]);
+        while(board->moves[1][size[1]][0] != -1){
+            printw("%d %d %d %d\n", board->moves[1][size[1]][0], board->moves[1][size[1]][1], board->moves[1][size[1]][2], board->moves[1][size[1]][3]);
             refresh();
-            tmp[1]++;
+            size[1]++;
         }
-        printw("DONE %d\n", tmp[1]);
+        printw("DONE %d\n", size[1]);
         printw("MOVES: \n");
         refresh();
-        while(board->moves[0][tmp[0]][0] != -1){
-            printw("%d %d %d %d\n", board->moves[0][tmp[0]][0], board->moves[0][tmp[0]][1], board->moves[0][tmp[0]][2], board->moves[0][tmp[0]][3]);
+        while(board->moves[0][size[0]][0] != -1){
+            printw("%d %d %d %d\n", board->moves[0][size[0]][0], board->moves[0][size[0]][1], board->moves[0][size[0]][2], board->moves[0][size[0]][3]);
             refresh();
-            tmp[0]++;
+            size[0]++;
         }
-        printw("DONE %d\n", tmp[0]);
+        printw("DONE %d\n", size[0]);
     
         refresh();
 
@@ -172,20 +172,20 @@ board_t *initializeBoard(){
 
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-                player = init_board[j][i];
+                player = init_board[i][j];
                 //if piece add to list
                 if(player > 0){
                     list_size = board->piece_list_size[player-1];
                     board->piece_list[player-1][list_size][0] = i;
                     board->piece_list[player-1][list_size][1] = j;
 
-                    board->cell[j][i][0] = player; //player
-                    board->cell[j][i][1] = list_size;  //which position in list
+                    board->cell[i][j][0] = player; //player
+                    board->cell[i][j][1] = list_size;  //which position in list
 
                     board->piece_list_size[player-1]++;
                     
                 }else
-                    board->cell[j][i][0] = -1;
+                    board->cell[i][j][0] = 0;
 
         }
     }
@@ -220,6 +220,16 @@ void printBoard(board_t *board){
     attroff(COLOR_PAIR(((i+j)%2)+1));
 
     refresh();
+}
+
+//tranforms stdscr coords to [9][9] coords
+int boardCoords(int *x, int *y){
+    if(*x < 0 || *y < 0 || *x > 8 || *y > 8)
+        return false;
+
+    *y = 8-*y;
+        
+    return true;
 }
 
 
@@ -263,24 +273,12 @@ void getMoves(board_t *board, int player){
 }
 
 
-
-
-//tranforms stdscr coords to [9][9] coords
-int boardCoords(int *x, int *y){
-    if(*x < 0 || *y < 0 || *x > 8 || *y > 8)
-        return false;
-
-    *y = 8-*y;
-        
-    return true;
-}
-
-
 //returns 0 if invalid, 1 for a normal move, 2 for a capture
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     //check if move is inbounds //FIXME: move the check of fromx/fromy to main
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
+
 
     //no piece in starting position or arriving position already occupied
     if(!PLAYER(fromx, fromy))
