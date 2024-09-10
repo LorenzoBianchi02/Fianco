@@ -3,27 +3,32 @@
 #include <stdlib.h>
 #include <locale.h>
 
-#define PLAYER(x, y) _PLAYER(board, x, y)
-#define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
-
-#define POSITION(x, y) _POSITION(board, x, y)
-#define _POSITION(board, x, y) board->cell[(x)][(y)][1]
+#define EMPTY 0
+#define WHITE 1
+#define BLACK 2
 
 /*
 the board is represented with a linked hashmap:
     each board cell is present in map.
     If the cell has a piece on it, then it will be
-    present in the corrisponding "list";
+    present in the corrisponding list;
 */
+typedef struct piece_t piece_t;
+struct piece_t{
+    int x;
+    int y;
+    int player;
+    piece_t *prev;    //NOTE: if these pointers remain here, I can't use the board as a hash (the pointers aren't always the same, see TODO for a possible solution)
+    piece_t *next;
+};
 
 typedef struct board_t{
-    int8_t cell[9][9][2]; //player (so wich list aswell) and position in the list //NOTE: maybe char can be used
-    
-    int8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
+    piece_t *cell[9][9];
+    piece_t *piece_list[3][16];
 
-    int8_t piece_list_size[2];   //amount of pieces in each list
-
-    int8_t moves[2][75][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+    int moves[2][75][4]; //moves a player can make: [2] ([0]: moves, [1]: captures)
+                         //                         [75] buffer
+                         //                         [2] x, y    
 }board_t;
 
 
@@ -41,7 +46,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 int boardCoords(int *x, int *y);
 
 //debug functions (END: will at some point have to be removed)
-void printList(board_t *board, int list);
+void  printList(piece_t *l);
 
 
 int main(){
@@ -83,13 +88,10 @@ int main(){
     while(TRUE){
         erase(); //FIXME: remove
         printBoard(board);
-        move(12, 0);
-        printw("LIST 0: ");
-        printList(board, 0);
-        printw("LIST 1: ");
-        printList(board, 1);
-        refresh();
-        getch();
+
+        move(13, 0);
+        printList(board->head[1]);
+        printList(board->head[2]);
 
         int tmp[2] = {0, 0};
         getMoves(board, turn%2+1);
@@ -119,7 +121,7 @@ int main(){
             fromx = mevent.x/2;
             fromy = mevent.y;
             refresh();
-        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || PLAYER(fromx, fromy) != turn % 2 + 1);
+        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || board->cell[fromx][fromy]->player != turn % 2 + 1);
 
         // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
@@ -165,33 +167,38 @@ board_t *initializeBoard(){
         {1, 0, 0, 0, 0, 0, 0, 0, 2}
     };
 
-    board->piece_list_size[0] = 0;
-    board->piece_list_size[1] = 0;
-
-    int player, list_size;
+    piece_t *last[3];
+    last[1] = NULL;
+    last[2] = NULL;
 
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-                player = init_board[j][i];
                 //if piece add to list
-                if(player > 0){
-                    list_size = board->piece_list_size[player-1];
-                    board->piece_list[player-1][list_size][0] = i;
-                    board->piece_list[player-1][list_size][1] = j;
+                if(init_board[j][i] != 0){
+                    piece_t *elem = (piece_t *)malloc(sizeof(piece_t));
+                    elem->x = i;
+                    elem->y = j;
+                    elem->player = init_board[j][i];
 
-                    board->cell[j][i][0] = player; //player
-                    board->cell[j][i][1] = list_size;  //which position in list
+                    elem->prev = last[elem->player];
 
-                    board->piece_list_size[player-1]++;
+                    if(last[elem->player])
+                        last[elem->player]->next = elem;
+                    else
+                        board->head[elem->player] = elem;
                     
+                    elem->next = NULL;
+                    last[elem->player] = elem;
+
+                    board->cell[j][i] = elem;
                 }else
-                    board->cell[j][i][0] = -1;
+                    board->cell[j][i] = NULL;
 
         }
     }
 
-    board->piece_list[0][board->piece_list_size[0]][0] = -1;
-    board->piece_list[1][board->piece_list_size[1]][0] = -1;
+    board->tail[1] = last[1];
+    board->tail[2] = last[2];
 
     return board;
 }
@@ -205,11 +212,12 @@ void printBoard(board_t *board){
     for(j=8; j>=0; j--){
         for(i=0; i<9; i++){
                 attron(COLOR_PAIR(((i+j)%2)+1));
-                if(PLAYER(i, j) == 1)
-                    printw("%s", "\u26C0 ");
-                else if(PLAYER(i, j) == 2)
-                    printw("%s", "\u26C2 ");
-                else
+                if(board->cell[i][j]){
+                    if(board->cell[i][j]->player == 1)
+                        printw("%s", "\u26C0 ");
+                    else if(board->cell[i][j]->player == 2)
+                        printw("%s", "\u26C2 ");
+                }else
                     printw("  ");
                 attroff(COLOR_PAIR(((i+j)%2)+1));
             
@@ -232,19 +240,18 @@ int _moves[2][5][2] = {
 //TODO: testing, print the moves
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
 void getMoves(board_t *board, int player){
+    piece_t *piece = board->head[player];
     int size[2] = {0, 0};
     int fromx, fromy, move;
-    int tox, toy, i, j;
+    int tox, toy;
 
-    player--;
+    while(piece){
+        fromx = piece->x;
+        fromy = piece->y;
 
-    for(i=0; i<board->piece_list_size[player]; i++){
-        fromx = board->piece_list[player][i][0];
-        fromy = board->piece_list[player][i][1];
-
-        for(j=0; j<5; j++){
-            tox = fromx + _moves[player][j][0];
-            toy = fromy + _moves[player][j][1];
+        for(int i=0; i<5; i++){
+            tox = fromx + _moves[player-1][i][0];
+            toy = fromy + _moves[player-1][i][1];
             move = validMove(board, fromx, fromy, tox, toy);
 
             if(move){ //REWRITE: not very elegant
@@ -256,6 +263,8 @@ void getMoves(board_t *board, int player){
                 size[move - 1]++;
             }
         }
+
+        piece=piece->next;
     }
 
     board->moves[0][size[0]][0] = -1;
@@ -283,12 +292,12 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
         return FALSE;
 
     //no piece in starting position or arriving position already occupied
-    if(!PLAYER(fromx, fromy))
+    if(!board->cell[fromx][fromy])
         return FALSE;
-    if(PLAYER(tox, toy))
+    if(board->cell[tox][toy])
         return FALSE;
 
-    int player = PLAYER(fromx, fromy);
+    int player = board->cell[fromx][fromy]->player;
 
     if(fromy == toy && abs(fromx - tox) == 1)
         return 1;
@@ -303,7 +312,7 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     //REWRITE: this aswell, to much duplication
     if(abs(fromx - tox) == 2 && abs(fromy - toy) == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
-        if(PLAYER(fromx+signx, fromy+signy) == 0 || PLAYER(fromx+signx, fromy+signy) == PLAYER(fromx, fromy))
+        if(board->cell[fromx+signx][fromy+signy] == NULL || board->cell[fromx+signx][fromy+signy]->player == board->cell[fromx][fromy]->player)
             return FALSE;
 
         if(player == 1 && toy - fromy == 2){
@@ -325,51 +334,29 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         return FALSE;
     
     if(move == 1){
-        //change coords
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][1] = toy;
-        
-        //move "pointer"
-        board->cell[tox][toy][0] = board->cell[fromx][fromy][0];
-        board->cell[tox][toy][1] = board->cell[fromx][fromy][1];
+        board->cell[tox][toy] = board->cell[fromx][fromy];  //INEF: to much board->cell[from][fromy] repitition
+        board->cell[fromx][fromy] = NULL;
 
-        //remove starting pos
-        board->cell[fromx][fromy][0] = 0;
-
+        board->cell[fromx][fromy]->x = tox;
+        board->cell[fromx][fromy]->y = toy;
     }else if(move == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
 
-        //change coords
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][1] = toy;
-        PLAYER(tox, toy) = PLAYER(fromx, fromy);
-
-        //remove starting pos
-        PLAYER(fromx, fromy) = 0;
-
-        //remove captured piece (also from list)
-        int x = fromx + signx, y = fromy+signy;
-        int list = PLAYER(x, y) - 1;
-        int oldpos = POSITION(fromx+signx, fromy+signy);
-
-
-
-        //swap current with the -1, then the -1 with the second to last one
-        board->piece_list[list][oldpos][0] = board->piece_list[list][board->piece_list_size[list] - 1][0];
-        board->piece_list[list][oldpos][1] = board->piece_list[list][board->piece_list_size[list] - 1][1];
-        board->piece_list[list][board->piece_list_size[list] - 1][0] = -1;        
-
-        board->cell[board->piece_list[list][oldpos][0]][board->piece_list[list][oldpos][1]][1] = oldpos;
-        board->piece_list_size[list]--;
+        board->cell[fromx+signx*2][fromy+signy*2] = board->cell[fromx][fromy];
+        board->cell[fromx][fromy] = NULL;
+        board->cell[fromx+signx][fromy+signy] = NULL;
     }
 
     return TRUE;
 }
 
-void printList(board_t *board, int list){
-    int i = 0;
-    for(i=0; i<board->piece_list_size[list]; i++){
-        printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
+//prints the coords of a players pieces
+void printList(piece_t *l){
+    piece_t *piece = l;
+
+    while(piece){
+        printw("%d %d %d, ", piece->x, piece->y, piece->player);
+        piece=piece->next;
     }
     printw("\n");
 
