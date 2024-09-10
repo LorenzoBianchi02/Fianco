@@ -154,15 +154,15 @@ board_t *initializeBoard(){
     //setting up the board
     int init_board[9][9] = 
     {
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2}
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 1, 0, 0, 0, 0, 0, 2, 0},
+        {0, 0, 1, 0, 0, 0, 2, 0, 0},
+        {0, 0, 0, 1, 0, 2, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0, 2, 0, 0, 0},
+        {0, 0, 1, 0, 0, 0, 2, 0, 0},
+        {0, 1, 0, 0, 0, 0, 0, 2, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0}
     };
 
     board->piece_list_size[0] = 0;
@@ -337,12 +337,12 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     }else if(move == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
 
-        //change coords
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
-        board->piece_list[PLAYER(tox, toy) - 1][POSITION(fromx, fromy)][1] = toy;
-        PLAYER(tox, toy) = PLAYER(fromx, fromy);
+        //move capturing piece
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
 
-        //remove starting pos
+        PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
+        POSITION(tox, toy) = POSITION(fromx, fromy);
         PLAYER(fromx, fromy) = 0;
 
         //remove captured piece (also from list)
@@ -350,9 +350,6 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         int list = PLAYER(x, y) - 1;
         int oldpos = POSITION(fromx+signx, fromy+signy);
 
-
-        //ERROR:
-        //swap current with the -1, then the -1 with the second to last one
         board->piece_list[list][oldpos][0] = board->piece_list[list][board->piece_list_size[list] - 1][0];
         board->piece_list[list][oldpos][1] = board->piece_list[list][board->piece_list_size[list] - 1][1];
         board->piece_list[list][board->piece_list_size[list] - 1][0] = -1;        
