@@ -110,8 +110,6 @@ int main(){
             size[0]++;
         }
         printw("DONE %d\n", size[0]);
-
-        printw("%d\n", validMove(board, 7, 7, 8, 7));
     
         refresh();
 
@@ -353,13 +351,15 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         int oldpos = POSITION(fromx+signx, fromy+signy);
 
 
-
+        //ERROR:
         //swap current with the -1, then the -1 with the second to last one
         board->piece_list[list][oldpos][0] = board->piece_list[list][board->piece_list_size[list] - 1][0];
         board->piece_list[list][oldpos][1] = board->piece_list[list][board->piece_list_size[list] - 1][1];
         board->piece_list[list][board->piece_list_size[list] - 1][0] = -1;        
 
         board->cell[board->piece_list[list][oldpos][0]][board->piece_list[list][oldpos][1]][1] = oldpos;
+        board->cell[x][y][0] = 0;
+
         board->piece_list_size[list]--;
     }
 
