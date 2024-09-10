@@ -11,12 +11,12 @@
 - handle a piece reaching the end of the board (win)
 - handle stalemate
 
-- make board states -1, 0, 1 instead of 0, 1, 2
-
 ## IF TIME ##
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 
     moved[3][3] --> [3] changed moves (-1 of not changed)
                     [3] x, y, player
+
+- using memcpy more
 
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient
 

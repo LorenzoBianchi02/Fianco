@@ -324,7 +324,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     
     if(move == 1){
         //change coords
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy
         board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
@@ -338,7 +338,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
 
         //move capturing piece
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy or pointers
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy
         board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
 
         PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
