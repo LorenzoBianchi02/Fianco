@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
+#include <server.c>
 
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
@@ -45,7 +46,6 @@ int checkWinHuman(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
 void printList(board_t *board, int list);
-
 
 int main(){
     //---------NCURSES---------//
