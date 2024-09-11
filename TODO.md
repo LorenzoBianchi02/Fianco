@@ -1,4 +1,6 @@
 ### PRIORITY# ##
+- first check captures
+- undo move
 - check valide move (you have to capture)
 
 - put turn in board

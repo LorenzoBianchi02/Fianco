@@ -24,6 +24,8 @@ typedef struct board_t{
     int8_t piece_list_size[2];   //amount of pieces in each list
 
     int8_t moves[2][75][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+
+    uint16_t turn;
 }board_t;
 
 
@@ -39,7 +41,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 //human functions
 void printBoard(board_t *board);
 int boardCoords(int *x, int *y);
-int checkWin(board_t *board);
+int checkWinHuman(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
 void printList(board_t *board, int list);
@@ -77,16 +79,19 @@ int main(){
 
     //---------MAIN---------//
     board_t *board = initializeBoard();
-    int turn = 0;
-
     int fromx, fromy, tox, toy;
 
-    while(!checkWin(board)){
+    //TODO: ask if you want to play as white or black
+    int human = 1; // you player as black for now
+    int flag;
+
+
+    while(!checkWinHuman(board)){
         erase(); //FIXME: remove
         printBoard(board);
 
         mvprintw(1, 20, "Player's turn:   \n");
-        mvchgat(1, 35, 2, A_NORMAL, turn%2+5, NULL);
+        mvchgat(1, 35, 2, A_NORMAL, board->turn%2+5, NULL);
 
         move(10, 0);
         printw("LIST WHITE: ");
@@ -97,7 +102,7 @@ int main(){
         refresh();
 
         int size[2] = {0, 0};
-        getMoves(board, turn%2+1);
+        getMoves(board, board->turn%2+1);
 
         printw("CAPTURES: \n");
         refresh();
@@ -115,33 +120,59 @@ int main(){
             size[0]++;
         }
         printw("DONE %d\n", size[0]);
-    
         refresh();
 
-        do{
+
+        //-----HUMAN-----//
+        if(board->turn % 2 + 1 == human){
+            getMoves(board, board->turn % 2 + 1);
+            do{
+                getch();
+                getmouse(&mevent);
+                fromx = mevent.x/2;
+                fromy = mevent.y;
+                refresh();
+            }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || PLAYER(fromx, fromy) != board->turn % 2 + 1);
+
+            // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
+
+            mvchgat(8-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
+
             getch();
             getmouse(&mevent);
-            fromx = mevent.x/2;
-            fromy = mevent.y;
+            tox = mevent.x/2;
+            toy = mevent.y;
             refresh();
-        }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || PLAYER(fromx, fromy) != turn % 2 + 1);
+            boardCoords(&tox, &toy);
 
-        // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
+            if(validMove(board, fromx, fromy, tox, toy)){
+                int capt;
+                flag=0;
+                if(board->moves[1][0][0] != -1)
+                    capt = 1;
+                else
+                    capt = 0;
 
-        mvchgat(8-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
-
-        getch();
-        getmouse(&mevent);
-        tox = mevent.x/2;
-        toy = mevent.y;
-        refresh();
-        boardCoords(&tox, &toy);
-
+                for(int h=0; board->moves[capt][h][0] != -1; h++){
+                    if(board->moves[capt][h][0] == fromx && board->moves[capt][h][1] == fromy && board->moves[capt][h][2] == tox && board->moves[capt][h][3] == toy){
+                        flag=1;
+                    }
+                }
+            }
         
-        if(movePiece(board, fromx, fromy, tox, toy))
-            turn++;
+            if(flag && movePiece(board, fromx, fromy, tox, toy))
+                board->turn++;
 
-        mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+            mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+        }
+
+        //------DESTROYER-----//
+        else{
+            human = human % 2 + 1;
+
+        }
+
+
 
         refresh();
     }
@@ -149,7 +180,7 @@ int main(){
     erase();
     printBoard(board);
     move(11, 0);
-    int winner = checkWin(board);
+    int winner = checkWinHuman(board);
     printw("   PLAYER %d won", winner);
     printw("\n\n   (Press any key to leave)");
     refresh();
@@ -167,15 +198,15 @@ board_t *initializeBoard(){
     //setting up the board
     int init_board[9][9] = 
     {
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 1, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 1, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 1, 0, 2, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 1, 0, 2, 0, 0, 0},
-        {0, 0, 1, 0, 0, 0, 0, 0, 0},
-        {0, 1, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0}
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2}
     };
 
     board->piece_list_size[0] = 0;
@@ -205,6 +236,8 @@ board_t *initializeBoard(){
 
     board->piece_list[0][board->piece_list_size[0]][0] = -1;
     board->piece_list[1][board->piece_list_size[1]][0] = -1;
+
+    board->turn = 0;
 
     return board;
 }
@@ -255,17 +288,18 @@ int _moves[2][5][2] = {
 //TODO: testing, print the moves
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
 void getMoves(board_t *board, int player){
-    int size[2] = {0, 0};
+    int size[2] = {0, 0}; //captures and moves
     int fromx, fromy, move;
     int tox, toy, i, j;
 
     player--;
 
+    //first check captures
     for(i=0; i<board->piece_list_size[player]; i++){
         fromx = board->piece_list[player][i][0];
         fromy = board->piece_list[player][i][1];
 
-        for(j=0; j<5; j++){
+        for(j=3; j<5; j++){
             tox = fromx + _moves[player][j][0];
             toy = fromy + _moves[player][j][1];
             move = validMove(board, fromx, fromy, tox, toy);
@@ -281,6 +315,29 @@ void getMoves(board_t *board, int player){
         }
     }
 
+    //check moves if no captures
+    if(!size[0]){
+        for(i=0; i<board->piece_list_size[player]; i++){
+            fromx = board->piece_list[player][i][0];
+            fromy = board->piece_list[player][i][1];
+
+            for(j=0; j<3; j++){
+                tox = fromx + _moves[player][j][0];
+                toy = fromy + _moves[player][j][1];
+                move = validMove(board, fromx, fromy, tox, toy);
+
+                if(move){ //REWRITE: not very elegant
+                    board->moves[move - 1][size[move - 1]][0] = fromx;
+                    board->moves[move - 1][size[move - 1]][1] = fromy;
+                    board->moves[move - 1][size[move - 1]][2] = tox;
+                    board->moves[move - 1][size[move - 1]][3] = toy;
+
+                    size[move - 1]++;
+                }
+            }
+        }
+    }
+
     board->moves[0][size[0]][0] = -1;
     board->moves[1][size[1]][0] = -1;
 }
@@ -292,8 +349,7 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
 
-
-    //no piece in starting position or arriving position already occupied
+    //no piece in starting position or arriving position already occupied //INEF: for the ai the first check isn't necesary
     if(!PLAYER(fromx, fromy))
         return FALSE;
     if(PLAYER(tox, toy))
@@ -301,25 +357,29 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
     int player = PLAYER(fromx, fromy);
 
+    //left right
     if(fromy == toy && abs(fromx - tox) == 1)
         return 1;
 
     //REWRITE: can be written better
+    //up down
     if(fromx == tox){
         if(player == 1 && toy - fromy == 1)
             return 1;
         if(player == 2 && toy - fromy == -1)
             return 1;
     }
+
     //REWRITE: this aswell, to much duplication
+    //capture
     if(abs(fromx - tox) == 2 && abs(fromy - toy) == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
         if(PLAYER(fromx+signx, fromy+signy) == 0 || PLAYER(fromx+signx, fromy+signy) == PLAYER(fromx, fromy))
             return FALSE;
 
-        if(player == 1 && toy - fromy == 2){
+        if(player == 1 && toy - fromy == 2)
             return 2;
-        }
+        
         if(player == 2 && toy - fromy == -2)
             return 2;
     }
@@ -387,7 +447,7 @@ void printList(board_t *board, int list){
 }
 
 //NOTE: ONLY FOR HUMAN: return winning player (0 for none)
-int checkWin(board_t *board){ //TODO: when there are < 8 pieces I should check piecelist instead (this is just human version)
+int checkWinHuman(board_t *board){
     //end of board reached
     for(int i=0; i<9; i++){
         if(PLAYER(i, 8) == 1)
@@ -402,14 +462,9 @@ int checkWin(board_t *board){ //TODO: when there are < 8 pieces I should check p
     if(!board->piece_list_size[1])
         return 1;
 
-    //stale mate ERROR: if black has no moves during white's turn he still loses
-    getMoves(board, 1);
+    getMoves(board,  board->turn%2+1);
     if(board->moves[0][0][0] == -1 && board->moves[1][0][0] == -1)
-        return 2;
-
-    getMoves(board, 2);
-    if(board->moves[0][0][0] == -1 && board->moves[1][0][0] == -1)
-        return 1;
+        return (board->turn+1)%2+1;
 
     return 0;
 }
