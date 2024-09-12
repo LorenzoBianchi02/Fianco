@@ -485,11 +485,11 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
 //guaranteed that this was the last move, and a valid one
 void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
     int move;
-    if(abs(fromx - fromy) == 2)
+    if(abs(fromx - tox) == 2)
         move = 2;
     else
         move = 1;
-
+        
     int tmp;
     //swap fromx and tox
     tmp = tox;
