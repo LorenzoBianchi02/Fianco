@@ -16,8 +16,6 @@ typedef int8_t move_t[2][76][4]; //moves a player can make: [2] ([0]: moves, [1]
 #define INF 40000 
 
 
-
-
 /*
 the board is represented with a linked hashmap:
     each board cell is present in map.
@@ -50,7 +48,7 @@ board_t *initializeBoard();
 void getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
-int undoMove(board_t *board, int fromx, int fromy, int tox, int toy); //NOTE: returns int in case called called at first move and needs to return -1
+void undoMove(board_t *board, int fromx, int fromy, int tox, int toy); //it is guaranteed the move is ok
 
 //ai frunction
 int negaMarx(board_t *board, int depth, int alpha, int beta);
@@ -86,8 +84,8 @@ int main(){
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
     init_pair(4, COLOR_WHITE, COLOR_YELLOW);    //piece selected 1
     init_pair(3, COLOR_WHITE, COLOR_GREEN);     //piece selected 2
-    init_pair(6, COLOR_BLACK, COLOR_BLACK);
-    init_pair(5, COLOR_BLACK, COLOR_WHITE);
+    init_pair(6, COLOR_BLACK, COLOR_BLACK);     //turn color 1
+    init_pair(5, COLOR_BLACK, COLOR_WHITE);     //turn color 2
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
@@ -98,20 +96,27 @@ int main(){
     board_t *board = initializeBoard();
     int fromx, fromy, tox, toy;
     move_t moves; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+    uint8_t move_history[1024][4];
 
     //TODO: ask if you want to play as white or black
-    int human = 2; // you player as black for now
+    int human = 1;
     int flag;
 
     getMoves(board, 1, moves);
 
 
     while(!checkWin(board)){
+        start_turn:
+
         erase(); //END: remove
         printBoard(board);
 
         mvprintw(1, 20, "Player's turn:   \n");
         mvchgat(1, 35, 2, A_NORMAL, board->turn%2+5, NULL);
+
+        mvprintw(3, 20, " UNDO \n");
+        mvchgat(3, 20, 6, A_NORMAL, 5, NULL);
+        refresh();
 
         move(10, 0);
         printw("LIST WHITE: ");
@@ -121,8 +126,13 @@ int main(){
         printw("\n");
         refresh();
 
+
+
         int size[2] = {0, 0};
         getMoves(board, board->turn%2+1, moves);
+        flag = 1;
+
+
 
         printw("CAPTURES: \n");
         refresh();
@@ -146,12 +156,22 @@ int main(){
         //-----HUMAN-----//
         if(board->turn % 2 + 1 == human){
             getMoves(board, board->turn % 2 + 1, moves);
+
+            //first click
             do{
                 getch();
                 getmouse(&mevent);
                 fromx = mevent.x/2;
                 fromy = mevent.y;
                 refresh();
+
+                //---UNDO---//
+                if(board->turn && fromy == 3 && fromx >= 10 && fromx <= 12){
+                    undoMove(board, move_history[board->turn-1][0], move_history[board->turn-1][1], move_history[board->turn-1][2], move_history[board->turn-1][3]);
+                    board->turn--;
+                    goto start_turn; //this is my code, and I shall do what I want!!!
+                }
+
             }while(!boardCoords(&fromx, &fromy) || !PLAYER(fromx, fromy) || PLAYER(fromx, fromy) != board->turn % 2 + 1); //NOTE: this may the only place where it is checked that the piece picked needs to be of the current player
 
             // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
@@ -176,20 +196,29 @@ int main(){
                 }
             }
         
-            if(flag && movePiece(board, fromx, fromy, tox, toy))
-                board->turn++;
 
             mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
         }
 
         //------DESTROYER-----//
         else{
-            int res = negaMarx(board, 1, -INF, INF);
+            human = human % 2 + 1;
+            // int res = negaMarx(board, 1, -INF, INF);
 
             // movePiece(board, );
         }
 
-        getMoves(board, board->turn % 2 + 1, moves);
+
+        //valid move
+        if(flag && movePiece(board, fromx, fromy, tox, toy)){
+            move_history[board->turn][0] = fromx;
+            move_history[board->turn][1] = fromy;
+            move_history[board->turn][2] = tox;
+            move_history[board->turn][3] = toy;
+            
+            board->turn++;
+        }
+
 
         refresh();
     }
@@ -453,9 +482,61 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
 
 
 //undos a given move
-int undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
-    //TODO:
-    return 1;
+//guaranteed that this was the last move, and a valid one
+void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
+    int move;
+    if(abs(fromx - fromy) == 2)
+        move = 2;
+    else
+        move = 1;
+
+    int tmp;
+    //swap fromx and tox
+    tmp = tox;
+    tox = fromx;
+    fromx = tmp;
+    //swap formy and toy
+    tmp = toy;
+    toy = fromy;
+    fromy = tmp;
+    
+
+    if(move == 1){
+        //change coords
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+        
+        //move "pointer"
+        board->cell[tox][toy][0] = board->cell[fromx][fromy][0];
+        board->cell[tox][toy][1] = board->cell[fromx][fromy][1];
+
+        //remove starting pos
+        board->cell[fromx][fromy][0] = 0;
+
+    }else if(move == 2){
+        int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
+
+        //move capturing piece
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+
+        PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
+        POSITION(tox, toy) = POSITION(fromx, fromy);
+        PLAYER(fromx, fromy) = 0;
+
+        //read captured piece (also from list)
+        int x = fromx + signx, y = fromy+signy;
+        int list = PLAYER(tox, toy) % 2;
+        int oldpos = POSITION(fromx+signx, fromy+signy);
+
+        board->piece_list[list][board->piece_list_size[list]][0] = x;
+        board->piece_list[list][board->piece_list_size[list]][0] = y;
+
+        PLAYER(x, y) = list + 1;
+        POSITION(x, y) = board->piece_list_size[list];
+        
+        board->piece_list_size[list]++;
+    }
 }
 
 

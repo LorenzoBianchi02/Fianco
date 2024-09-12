@@ -1,7 +1,7 @@
 ### PRIORITY# ##
 - first depht negamarx, or check if best move is needed for some techniche
 
-- undo move
+- undo move (stack of moves)
 
 - moves should be saved in the node, not in board
 
