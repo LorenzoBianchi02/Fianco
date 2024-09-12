@@ -96,7 +96,7 @@ int main(){
     board_t *board = initializeBoard();
     int fromx, fromy, tox, toy;
     move_t moves; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
-    uint8_t move_history[1024][4];
+    uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     //TODO: ask if you want to play as white or black
     int human = 1;
@@ -489,7 +489,7 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
         move = 2;
     else
         move = 1;
-        
+
     int tmp;
     //swap fromx and tox
     tmp = tox;
