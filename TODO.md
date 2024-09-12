@@ -1,18 +1,19 @@
 ### PRIORITY# ##
-- first check captures
+- first depht negamarx, or check if best move is needed for some techniche
+
 - undo move
-- check valide move (you have to capture)
 
-- put turn in board
-
-- handle a player having no pieces
-- handle a piece reaching the end of the board (win)
-- handle stalemate
-
+- moves should be saved in the node, not in board
 
 - handle 3 move repition
 
+- handle stalemate in separate function (now it isn't handled, commented in checkWin)
+
+- create a value_t (typedef)
+
 ## IF TIME ##
+- test CAN_CAPT define
+
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 
     moved[3][3] --> [3] changed moves (-1 of not changed)
                     [3] x, y, player
@@ -23,6 +24,8 @@
 
 
 # WHO CARES #
+- change name of negamarx func
+
 - mouse and keyboard
 
 - should free memory at some point

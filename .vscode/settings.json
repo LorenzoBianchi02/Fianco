@@ -4,7 +4,7 @@
             "text": "NOTE:",
             "color": "black",
             "backgroundColor": "pink",
-            "overviewRulerColor": "pink"
+            "overviewRulerColor": "none"
         },
         {
             "text": "INEF:",
@@ -15,7 +15,7 @@
             "text": "END:",
             "color": "white",
             "backgroundColor": "purple",
-            "overviewRulerColor": "purple"
+            "overviewRulerColor": "none"
         }, {
             "text": "ERROR:",
             "color": "white",

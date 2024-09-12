@@ -2,13 +2,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
-#include <server.c>
 
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
 
 #define POSITION(x, y) _POSITION(board, x, y)
 #define _POSITION(board, x, y) board->cell[(x)][(y)][1]
+
+#define CAN_CAPT(moves) moves[1][0][0] != -1 ? 1 : 0
+
+typedef int8_t move_t[2][76][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+
+#define INF 40000 
+
+
+
 
 /*
 the board is represented with a linked hashmap:
@@ -22,27 +30,36 @@ typedef struct board_t{
     
     int8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
 
-    int8_t piece_list_size[2];   //amount of pieces in each list
-
-    int8_t moves[2][75][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+    uint8_t piece_list_size[2];   //amount of pieces in each list
 
     uint16_t turn;
 }board_t;
 
 
 
+typedef struct result_t{
+    int score;
+    int move;
+}result_t;
+
+
+
 board_t *initializeBoard();
 
 //general functions
-void getMoves(board_t *board, int player);
+void getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
+int undoMove(board_t *board, int fromx, int fromy, int tox, int toy); //NOTE: returns int in case called called at first move and needs to return -1
 
+//ai frunction
+int negaMarx(board_t *board, int depth, int alpha, int beta);
+int evaluate(board_t *board);
 
 //human functions
 void printBoard(board_t *board);
 int boardCoords(int *x, int *y);
-int checkWinHuman(board_t *board);
+int checkWin(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
 void printList(board_t *board, int list);
@@ -80,14 +97,17 @@ int main(){
     //---------MAIN---------//
     board_t *board = initializeBoard();
     int fromx, fromy, tox, toy;
+    move_t moves; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 
     //TODO: ask if you want to play as white or black
-    int human = 1; // you player as black for now
+    int human = 2; // you player as black for now
     int flag;
 
+    getMoves(board, 1, moves);
 
-    while(!checkWinHuman(board)){
-        erase(); //FIXME: remove
+
+    while(!checkWin(board)){
+        erase(); //END: remove
         printBoard(board);
 
         mvprintw(1, 20, "Player's turn:   \n");
@@ -102,20 +122,20 @@ int main(){
         refresh();
 
         int size[2] = {0, 0};
-        getMoves(board, board->turn%2+1);
+        getMoves(board, board->turn%2+1, moves);
 
         printw("CAPTURES: \n");
         refresh();
-        while(board->moves[1][size[1]][0] != -1){
-            printw("%d %d %d %d\n", board->moves[1][size[1]][0], board->moves[1][size[1]][1], board->moves[1][size[1]][2], board->moves[1][size[1]][3]);
+        while(moves[1][size[1]][0] != -1){
+            printw("%d %d %d %d\n", moves[1][size[1]][0], moves[1][size[1]][1], moves[1][size[1]][2], moves[1][size[1]][3]);
             refresh();
             size[1]++;
         }
         printw("DONE %d\n", size[1]);
         printw("MOVES: \n");
         refresh();
-        while(board->moves[0][size[0]][0] != -1){
-            printw("%d %d %d %d\n", board->moves[0][size[0]][0], board->moves[0][size[0]][1], board->moves[0][size[0]][2], board->moves[0][size[0]][3]);
+        while(moves[0][size[0]][0] != -1){
+            printw("%d %d %d %d\n", moves[0][size[0]][0], moves[0][size[0]][1], moves[0][size[0]][2], moves[0][size[0]][3]);
             refresh();
             size[0]++;
         }
@@ -125,14 +145,14 @@ int main(){
 
         //-----HUMAN-----//
         if(board->turn % 2 + 1 == human){
-            getMoves(board, board->turn % 2 + 1);
+            getMoves(board, board->turn % 2 + 1, moves);
             do{
                 getch();
                 getmouse(&mevent);
                 fromx = mevent.x/2;
                 fromy = mevent.y;
                 refresh();
-            }while(!boardCoords(&fromx, &fromy) || !board->cell[fromx][fromy] || PLAYER(fromx, fromy) != board->turn % 2 + 1);
+            }while(!boardCoords(&fromx, &fromy) || !PLAYER(fromx, fromy) || PLAYER(fromx, fromy) != board->turn % 2 + 1); //NOTE: this may the only place where it is checked that the piece picked needs to be of the current player
 
             // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
@@ -146,15 +166,11 @@ int main(){
             boardCoords(&tox, &toy);
 
             if(validMove(board, fromx, fromy, tox, toy)){
-                int capt;
+                int capt = CAN_CAPT(moves);
                 flag=0;
-                if(board->moves[1][0][0] != -1)
-                    capt = 1;
-                else
-                    capt = 0;
 
-                for(int h=0; board->moves[capt][h][0] != -1; h++){
-                    if(board->moves[capt][h][0] == fromx && board->moves[capt][h][1] == fromy && board->moves[capt][h][2] == tox && board->moves[capt][h][3] == toy){
+                for(int h=0; moves[capt][h][0] != -1; h++){
+                    if(moves[capt][h][0] == fromx && moves[capt][h][1] == fromy && moves[capt][h][2] == tox && moves[capt][h][3] == toy){
                         flag=1;
                     }
                 }
@@ -168,11 +184,12 @@ int main(){
 
         //------DESTROYER-----//
         else{
-            human = human % 2 + 1;
+            int res = negaMarx(board, 1, -INF, INF);
 
+            // movePiece(board, );
         }
 
-
+        getMoves(board, board->turn % 2 + 1, moves);
 
         refresh();
     }
@@ -180,7 +197,7 @@ int main(){
     erase();
     printBoard(board);
     move(11, 0);
-    int winner = checkWinHuman(board);
+    int winner = checkWin(board);
     printw("   PLAYER %d won", winner);
     printw("\n\n   (Press any key to leave)");
     refresh();
@@ -285,9 +302,8 @@ int _moves[2][5][2] = {
     {{-1, 0}, {1, 0}, {0, 1}, {-2, 2}, {2, 2}},
     {{-1, 0}, {1, 0}, {0, -1}, {-2, -2}, {2, -2}}};
 
-//TODO: testing, print the moves
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
-void getMoves(board_t *board, int player){
+void getMoves(board_t *board, int player, move_t moves){
     int size[2] = {0, 0}; //captures and moves
     int fromx, fromy, move;
     int tox, toy, i, j;
@@ -305,10 +321,10 @@ void getMoves(board_t *board, int player){
             move = validMove(board, fromx, fromy, tox, toy);
 
             if(move){ //REWRITE: not very elegant
-                board->moves[move - 1][size[move - 1]][0] = fromx;
-                board->moves[move - 1][size[move - 1]][1] = fromy;
-                board->moves[move - 1][size[move - 1]][2] = tox;
-                board->moves[move - 1][size[move - 1]][3] = toy;
+                moves[move - 1][size[move - 1]][0] = fromx;
+                moves[move - 1][size[move - 1]][1] = fromy;
+                moves[move - 1][size[move - 1]][2] = tox;
+                moves[move - 1][size[move - 1]][3] = toy;
 
                 size[move - 1]++;
             }
@@ -327,10 +343,10 @@ void getMoves(board_t *board, int player){
                 move = validMove(board, fromx, fromy, tox, toy);
 
                 if(move){ //REWRITE: not very elegant
-                    board->moves[move - 1][size[move - 1]][0] = fromx;
-                    board->moves[move - 1][size[move - 1]][1] = fromy;
-                    board->moves[move - 1][size[move - 1]][2] = tox;
-                    board->moves[move - 1][size[move - 1]][3] = toy;
+                    moves[move - 1][size[move - 1]][0] = fromx;
+                    moves[move - 1][size[move - 1]][1] = fromy;
+                    moves[move - 1][size[move - 1]][2] = tox;
+                    moves[move - 1][size[move - 1]][3] = toy;
 
                     size[move - 1]++;
                 }
@@ -338,18 +354,18 @@ void getMoves(board_t *board, int player){
         }
     }
 
-    board->moves[0][size[0]][0] = -1;
-    board->moves[1][size[1]][0] = -1;
+    moves[0][size[0]][0] = -1;
+    moves[1][size[1]][0] = -1;
 }
 
 
 //returns 0 if invalid, 1 for a normal move, 2 for a capture
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
-    //check if move is inbounds //FIXME: move the check of fromx/fromy to main
+    //check if move is inbounds
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
 
-    //no piece in starting position or arriving position already occupied //INEF: for the ai the first check isn't necesary
+    //no piece in starting position or arriving position already occupied //INEF:(small) for the ai the first check isn't necesary
     if(!PLAYER(fromx, fromy))
         return FALSE;
     if(PLAYER(tox, toy))
@@ -389,7 +405,6 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
 //Returns whethers the move has succesfully been done.
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
-//TODO: this function is too ineficient to use for the model
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move)
@@ -397,7 +412,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     
     if(move == 1){
         //change coords
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
         board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
@@ -411,7 +426,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
 
         //move capturing piece
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //FIXME: use memcpy
+        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
         board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
 
         PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
@@ -436,6 +451,57 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     return TRUE;
 }
 
+
+//undos a given move
+int undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
+    //TODO:
+    return 1;
+}
+
+
+int negaMarx(board_t *board, int depth, int alpha, int beta){
+    if(checkWin(board) || !depth)
+        return evaluate(board);
+    
+    move_t moves;
+    getMoves(board, board->turn%2+1, moves);
+
+    //TODO: stalemate should be checked here
+
+    //TODO: check how many bits are needed
+    int score = -INF;
+    int value;
+
+    int capt = CAN_CAPT(moves);
+
+    //can capture
+    for(int i=0; moves[1][i][0] != -1; i++){
+        movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        value = -1 * negaMarx(board, depth--, -beta, -alpha);
+        undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+
+        if(value > score)
+            score = value;
+        if(score > alpha)
+            alpha = score;
+        if(score >= beta)
+            break;
+    }
+
+    return score;
+}
+
+
+//NOTE: check if I need to negate
+//TODO: how many bits are needed
+int evaluate(board_t *board){
+    return (board->piece_list_size[0] - board->piece_list_size[1]) * -1;
+}
+
+
+
+
+
 void printList(board_t *board, int list){
     for(int i=0; i<board->piece_list_size[list]; i++){
         printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
@@ -446,8 +512,8 @@ void printList(board_t *board, int list){
     refresh();
 }
 
-//NOTE: ONLY FOR HUMAN: return winning player (0 for none)
-int checkWinHuman(board_t *board){
+//return winning player (0 for none)
+int checkWin(board_t *board){
     //end of board reached
     for(int i=0; i<9; i++){
         if(PLAYER(i, 8) == 1)
@@ -462,9 +528,8 @@ int checkWinHuman(board_t *board){
     if(!board->piece_list_size[1])
         return 1;
 
-    getMoves(board,  board->turn%2+1);
-    if(board->moves[0][0][0] == -1 && board->moves[1][0][0] == -1)
-        return (board->turn+1)%2+1;
+    // if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
+    //     return (board->turn+1)%2+1;
 
     return 0;
 }
