@@ -51,7 +51,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
 void undoMove(board_t *board, int fromx, int fromy, int tox, int toy); //it is guaranteed the move is ok
 
 //ai frunction
-int negaMarx(board_t *board, int depth, int alpha, int beta);
+int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
 int evaluate(board_t *board);
 
 //human functions
@@ -202,10 +202,17 @@ int main(){
 
         //------DESTROYER-----//
         else{
-            human = human % 2 + 1;
-            // int res = negaMarx(board, 1, -INF, INF);
+            // human = human % 2 + 1;
 
-            // movePiece(board, );
+            int best[4];
+            int res = negaMarx(board, 2, -INF, INF, best);
+
+            fromx = best[0];
+            fromy = best[1];
+            tox = best[2];
+            toy = best[3];
+
+            movePiece(board, fromx, fromy, tox, toy);
         }
 
 
@@ -539,8 +546,8 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
     }
 }
 
-
-int negaMarx(board_t *board, int depth, int alpha, int beta){
+//main function for AI
+int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     if(checkWin(board) || !depth)
         return evaluate(board);
     
@@ -550,7 +557,7 @@ int negaMarx(board_t *board, int depth, int alpha, int beta){
     //TODO: stalemate should be checked here
 
     //TODO: check how many bits are needed
-    int score = -INF;
+    int score = -INF, move;
     int value;
 
     int capt = CAN_CAPT(moves);
@@ -558,16 +565,23 @@ int negaMarx(board_t *board, int depth, int alpha, int beta){
     //can capture
     for(int i=0; moves[1][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        value = -1 * negaMarx(board, depth--, -beta, -alpha);
+        value = -1 * negaMarx(board, depth--, -beta, -alpha, best);
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
 
-        if(value > score)
+        if(value > score){
             score = value;
+            move = i;
+        }
         if(score > alpha)
             alpha = score;
         if(score >= beta)
             break;
     }
+
+    best[0] = moves[capt][move][0];
+    best[1] = moves[capt][move][1];
+    best[2] = moves[capt][move][2];
+    best[3] = moves[capt][move][3];
 
     return score;
 }

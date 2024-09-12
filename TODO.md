@@ -4,6 +4,7 @@
 - handle stalemate in separate function (now it isn't handled, commented in checkWin)
 
 - create a value_t (typedef)
+- create a move_t
 
 
 - checking ai time
