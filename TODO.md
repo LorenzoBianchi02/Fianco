@@ -6,6 +6,8 @@
 - create a value_t (typedef)
 - create a move_t
 
+- turn to player define
+
 
 - checking ai time
 

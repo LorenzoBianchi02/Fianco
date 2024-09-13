@@ -61,6 +61,10 @@ int checkWin(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
 void printList(board_t *board, int list);
+void printMoves(move_t moves);
+
+//statistics
+uint64_t states_visited;
 
 int main(){
     //---------NCURSES---------//
@@ -99,7 +103,7 @@ int main(){
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     //TODO: ask if you want to play as white or black
-    int human = 1;
+    int human = 2;
     int flag;
 
     getMoves(board, 1, moves);
@@ -127,35 +131,14 @@ int main(){
         refresh();
 
 
-
-        int size[2] = {0, 0};
         getMoves(board, board->turn%2+1, moves);
         flag = 1;
 
-
-
-        printw("CAPTURES: \n");
-        refresh();
-        while(moves[1][size[1]][0] != -1){
-            printw("%d %d %d %d\n", moves[1][size[1]][0], moves[1][size[1]][1], moves[1][size[1]][2], moves[1][size[1]][3]);
-            refresh();
-            size[1]++;
-        }
-        printw("DONE %d\n", size[1]);
-        printw("MOVES: \n");
-        refresh();
-        while(moves[0][size[0]][0] != -1){
-            printw("%d %d %d %d\n", moves[0][size[0]][0], moves[0][size[0]][1], moves[0][size[0]][2], moves[0][size[0]][3]);
-            refresh();
-            size[0]++;
-        }
-        printw("DONE %d\n", size[0]);
-        refresh();
-
-
         //-----HUMAN-----//
+        move(6, 20);
         if(board->turn % 2 + 1 == human){
-            getMoves(board, board->turn % 2 + 1, moves);
+            printw("states visited %lu\n", states_visited);
+            refresh();
 
             //first click
             do{
@@ -178,6 +161,7 @@ int main(){
 
             mvchgat(8-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
 
+            //second click
             getch();
             getmouse(&mevent);
             tox = mevent.x/2;
@@ -186,33 +170,43 @@ int main(){
             boardCoords(&tox, &toy);
 
             if(validMove(board, fromx, fromy, tox, toy)){
+                getMoves(board, human, moves);
+                printMoves(moves);
                 int capt = CAN_CAPT(moves);
                 flag=0;
 
                 for(int h=0; moves[capt][h][0] != -1; h++){
                     if(moves[capt][h][0] == fromx && moves[capt][h][1] == fromy && moves[capt][h][2] == tox && moves[capt][h][3] == toy){
                         flag=1;
+                        break;
                     }
                 }
+
+                move(7, 20);
+                printw("test %d %d, %d %d %d %d (%d %d) %d\n", flag, capt, fromx, fromy, tox, toy, PLAYER(fromx, fromy), PLAYER(tox, toy), validMove(board, fromx ,fromy, tox, toy));
+                refresh();
+                getch();
             }
         
 
             mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
+
         }
 
         //------DESTROYER-----//
         else{
             // human = human % 2 + 1;
 
+            states_visited = 0;
+
+
             int best[4];
-            int res = negaMarx(board, 2, -INF, INF, best);
+            int res = negaMarx(board, 1, -INF, INF, best);
 
             fromx = best[0];
             fromy = best[1];
             tox = best[2];
             toy = best[3];
-
-            movePiece(board, fromx, fromy, tox, toy);
         }
 
 
@@ -225,7 +219,6 @@ int main(){
             
             board->turn++;
         }
-
 
         refresh();
     }
@@ -357,12 +350,13 @@ void getMoves(board_t *board, int player, move_t moves){
             move = validMove(board, fromx, fromy, tox, toy);
 
             if(move){ //REWRITE: not very elegant
-                moves[move - 1][size[move - 1]][0] = fromx;
-                moves[move - 1][size[move - 1]][1] = fromy;
-                moves[move - 1][size[move - 1]][2] = tox;
-                moves[move - 1][size[move - 1]][3] = toy;
+                move--;
+                moves[move][size[move]][0] = fromx;
+                moves[move][size[move]][1] = fromy;
+                moves[move][size[move]][2] = tox;
+                moves[move][size[move]][3] = toy;
 
-                size[move - 1]++;
+                size[move]++;
             }
         }
     }
@@ -379,12 +373,13 @@ void getMoves(board_t *board, int player, move_t moves){
                 move = validMove(board, fromx, fromy, tox, toy);
 
                 if(move){ //REWRITE: not very elegant
-                    moves[move - 1][size[move - 1]][0] = fromx;
-                    moves[move - 1][size[move - 1]][1] = fromy;
-                    moves[move - 1][size[move - 1]][2] = tox;
-                    moves[move - 1][size[move - 1]][3] = toy;
+                    move--;
+                    moves[move][size[move]][0] = fromx;
+                    moves[move][size[move]][1] = fromy;
+                    moves[move][size[move]][2] = tox;
+                    moves[move][size[move]][3] = toy;
 
-                    size[move - 1]++;
+                    size[move]++;
                 }
             }
         }
@@ -546,8 +541,11 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
     }
 }
 
+
 //main function for AI
 int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
+    states_visited++;
+
     if(checkWin(board) || !depth)
         return evaluate(board);
     
@@ -563,9 +561,11 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     int capt = CAN_CAPT(moves);
 
     //can capture
-    for(int i=0; moves[1][i][0] != -1; i++){
+    for(int i=0; moves[capt][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        value = -1 * negaMarx(board, depth--, -beta, -alpha, best);
+        board->turn++;
+        value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
+        board->turn--;
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
 
         if(value > score){
@@ -594,19 +594,6 @@ int evaluate(board_t *board){
 }
 
 
-
-
-
-void printList(board_t *board, int list){
-    for(int i=0; i<board->piece_list_size[list]; i++){
-        printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
-    }
-    printw("(%d) ", board->piece_list_size[list]);
-    printw("\n");
-
-    refresh();
-}
-
 //return winning player (0 for none)
 int checkWin(board_t *board){
     //end of board reached
@@ -627,4 +614,41 @@ int checkWin(board_t *board){
     //     return (board->turn+1)%2+1;
 
     return 0;
+}
+
+
+
+void printList(board_t *board, int list){
+    for(int i=0; i<board->piece_list_size[list]; i++){
+        printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
+    }
+    printw("(%d) ", board->piece_list_size[list]);
+    printw("\n");
+
+    refresh();
+}
+
+
+void printMoves(move_t moves){
+    move(15, 0);
+
+    int size[2] = {0, 0};
+
+    printw("CAPTURES: \n");
+        refresh();
+        while(moves[1][size[1]][0] != -1){
+            printw("%d %d %d %d\n", moves[1][size[1]][0], moves[1][size[1]][1], moves[1][size[1]][2], moves[1][size[1]][3]);
+            refresh();
+            size[1]++;
+        }
+        printw("DONE %d\n", size[1]);
+        printw("MOVES: \n");
+        refresh();
+        while(moves[0][size[0]][0] != -1){
+            printw("%d %d %d %d\n", moves[0][size[0]][0], moves[0][size[0]][1], moves[0][size[0]][2], moves[0][size[0]][3]);
+            refresh();
+            size[0]++;
+        }
+        printw("DONE %d\n", size[0]);
+        refresh();
 }
