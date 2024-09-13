@@ -28,7 +28,7 @@ typedef struct board_t{
     
     int8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
 
-    uint8_t piece_list_size[2];   //amount of pieces in each list
+    uint8_t piece_list_size[2];  //amount of pieces in each list
 
     uint16_t turn;
 }board_t;
@@ -65,6 +65,7 @@ void printMoves(move_t moves);
 
 //statistics
 uint64_t states_visited;
+int root;
 
 int main(){
     //---------NCURSES---------//
@@ -104,6 +105,7 @@ int main(){
 
     //TODO: ask if you want to play as white or black
     int human = 2;
+    root = human % 2;
     int flag;
 
     getMoves(board, 1, moves);
@@ -132,6 +134,7 @@ int main(){
 
 
         getMoves(board, board->turn%2+1, moves);
+        printMoves(moves);
         flag = 1;
 
         //-----HUMAN-----//
@@ -181,16 +184,10 @@ int main(){
                         break;
                     }
                 }
-
-                move(7, 20);
-                printw("test %d %d, %d %d %d %d (%d %d) %d\n", flag, capt, fromx, fromy, tox, toy, PLAYER(fromx, fromy), PLAYER(tox, toy), validMove(board, fromx ,fromy, tox, toy));
-                refresh();
-                getch();
             }
         
 
             mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
-
         }
 
         //------DESTROYER-----//
@@ -201,7 +198,7 @@ int main(){
 
 
             int best[4];
-            int res = negaMarx(board, 1, -INF, INF, best);
+            int res = negaMarx(board, 2, -INF, INF, best);
 
             fromx = best[0];
             fromy = best[1];
@@ -347,16 +344,14 @@ void getMoves(board_t *board, int player, move_t moves){
         for(j=3; j<5; j++){
             tox = fromx + _moves[player][j][0];
             toy = fromy + _moves[player][j][1];
-            move = validMove(board, fromx, fromy, tox, toy);
 
-            if(move){ //REWRITE: not very elegant
-                move--;
-                moves[move][size[move]][0] = fromx;
-                moves[move][size[move]][1] = fromy;
-                moves[move][size[move]][2] = tox;
-                moves[move][size[move]][3] = toy;
+            if(validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+                moves[1][size[1]][0] = fromx;
+                moves[1][size[1]][1] = fromy;
+                moves[1][size[1]][2] = tox;
+                moves[1][size[1]][3] = toy;
 
-                size[move]++;
+                size[1]++;
             }
         }
     }
@@ -370,16 +365,14 @@ void getMoves(board_t *board, int player, move_t moves){
             for(j=0; j<3; j++){
                 tox = fromx + _moves[player][j][0];
                 toy = fromy + _moves[player][j][1];
-                move = validMove(board, fromx, fromy, tox, toy);
 
-                if(move){ //REWRITE: not very elegant
-                    move--;
-                    moves[move][size[move]][0] = fromx;
-                    moves[move][size[move]][1] = fromy;
-                    moves[move][size[move]][2] = tox;
-                    moves[move][size[move]][3] = toy;
+                if(validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+                    moves[0][size[0]][0] = fromx;
+                    moves[0][size[0]][1] = fromy;
+                    moves[0][size[0]][2] = tox;
+                    moves[0][size[0]][3] = toy;
 
-                    size[move]++;
+                    size[0]++;
                 }
             }
         }
@@ -544,10 +537,16 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
 //main function for AI
 int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
+    printBoard(board);
+    int eval = evaluate(board);
+    mvprintw(16, 20, "eval: %d", eval);
+    refresh();
+    getch();
     states_visited++;
 
-    if(checkWin(board) || !depth)
-        return evaluate(board);
+    if(checkWin(board) || !depth){
+        return eval;
+    }
     
     move_t moves;
     getMoves(board, board->turn%2+1, moves);
@@ -560,13 +559,12 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 
     int capt = CAN_CAPT(moves);
 
-    //can capture
     for(int i=0; moves[capt][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
         value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
-        board->turn--;
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        board->turn--;
 
         if(value > score){
             score = value;
@@ -574,6 +572,7 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
         }
         if(score > alpha)
             alpha = score;
+        //prune
         if(score >= beta)
             break;
     }
@@ -590,7 +589,7 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 //NOTE: check if I need to negate
 //TODO: how many bits are needed
 int evaluate(board_t *board){
-    return (board->piece_list_size[0] - board->piece_list_size[1]) * -1;
+    return (board->piece_list_size[root] - board->piece_list_size[(root+1)%2]) * -1;
 }
 
 
