@@ -60,7 +60,7 @@ int boardCoords(int *x, int *y);
 int checkWin(board_t *board);
 
 //debug functions (END: will at some point have to be removed)
-void printList(board_t *board, int list);
+void printList(board_t *board);
 void printMoves(move_t moves);
 
 //statistics
@@ -126,9 +126,9 @@ int main(){
 
         move(10, 0);
         printw("LIST WHITE: ");
-        printList(board, 0);
+        printList(board);
         printw("LIST BLACK: ");
-        printList(board, 1);
+        printList(board);
         printw("\n");
         refresh();
 
@@ -198,7 +198,7 @@ int main(){
 
 
             int best[4];
-            int res = negaMarx(board, 2, -INF, INF, best);
+            int res = negaMarx(board, 7, -INF, INF, best);
 
             fromx = best[0];
             fromy = best[1];
@@ -464,7 +464,6 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
 
         board->piece_list[list][oldpos][0] = board->piece_list[list][board->piece_list_size[list] - 1][0];
         board->piece_list[list][oldpos][1] = board->piece_list[list][board->piece_list_size[list] - 1][1];
-        board->piece_list[list][board->piece_list_size[list] - 1][0] = -1;        
 
         board->cell[board->piece_list[list][oldpos][0]][board->piece_list[list][oldpos][1]][1] = oldpos;
         board->cell[x][y][0] = 0;
@@ -525,7 +524,7 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
         int oldpos = POSITION(fromx+signx, fromy+signy);
 
         board->piece_list[list][board->piece_list_size[list]][0] = x;
-        board->piece_list[list][board->piece_list_size[list]][0] = y;
+        board->piece_list[list][board->piece_list_size[list]][1] = y;
 
         PLAYER(x, y) = list + 1;
         POSITION(x, y) = board->piece_list_size[list];
@@ -537,11 +536,8 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
 //main function for AI
 int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
-    printBoard(board);
     int eval = evaluate(board);
-    mvprintw(16, 20, "eval: %d", eval);
-    refresh();
-    getch();
+    erase();
     states_visited++;
 
     if(checkWin(board) || !depth){
@@ -563,8 +559,33 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
         value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
+
+        // if(value){
+        //     printBoard(board);
+        //     printList(board);
+        //     move_t tmp;
+        //     getMoves(board, board->turn%2+1, tmp);
+        //     printMoves(tmp);
+        //     mvprintw(16, 20, "value: %d", value);
+        //     mvprintw(17, 20, "%d %d %d %d",  moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        //     refresh();
+        //     getch(); 
+        // }
+
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn--;
+
+        // if(value){
+        //     printBoard(board);
+        //     printList(board);
+        //     move_t tmp;
+        //     getMoves(board, board->turn%2+1, tmp);
+        //     printMoves(tmp);
+        //     mvprintw(16, 20, "value: %d", value);
+        //     mvprintw(17, 20, "%d %d %d %d",  moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        //     refresh();
+        //     getch(); 
+        // }
 
         if(value > score){
             score = value;
@@ -617,11 +638,17 @@ int checkWin(board_t *board){
 
 
 
-void printList(board_t *board, int list){
-    for(int i=0; i<board->piece_list_size[list]; i++){
-        printw("%d %d, ", board->piece_list[list][i][0], board->piece_list[list][i][1]);
+void printList(board_t *board){
+    move(10, 0);
+    for(int i=0; i<board->piece_list_size[0]; i++){
+        printw("%d %d, ", board->piece_list[0][i][0], board->piece_list[0][i][1]);
     }
-    printw("(%d) ", board->piece_list_size[list]);
+    printw("(%d) ", board->piece_list_size[0]);
+    printw("\n");
+    for(int i=0; i<board->piece_list_size[1]; i++){
+        printw("%d %d, ", board->piece_list[1][i][0], board->piece_list[1][i][1]);
+    }
+    printw("(%d) ", board->piece_list_size[1]);
     printw("\n");
 
     refresh();
