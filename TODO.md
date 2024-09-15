@@ -13,6 +13,8 @@
 
 - confirm ai move
 
+- define for board->turn % 2 + 1
+
 ## IF TIME ##
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 
     moved[3][3] --> [3] changed moves (-1 of not changed)

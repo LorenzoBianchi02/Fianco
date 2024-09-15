@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <locale.h>
+#include <time.h>
 
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
@@ -65,7 +66,7 @@ void printMoves(move_t moves);
 
 //statistics
 uint64_t states_visited;
-int root;
+uint64_t states_pruned;
 
 int main(){
     //---------NCURSES---------//
@@ -91,6 +92,7 @@ int main(){
     init_pair(3, COLOR_WHITE, COLOR_GREEN);     //piece selected 2
     init_pair(6, COLOR_BLACK, COLOR_BLACK);     //turn color 1
     init_pair(5, COLOR_BLACK, COLOR_WHITE);     //turn color 2
+    init_pair(7, COLOR_BLACK, COLOR_CYAN);      //last move
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
@@ -105,8 +107,8 @@ int main(){
 
     //TODO: ask if you want to play as white or black
     int human = 2;
-    root = human % 2;
     int flag;
+    clock_t start, end;
 
     getMoves(board, 1, moves);
 
@@ -116,6 +118,10 @@ int main(){
 
         erase(); //END: remove
         printBoard(board);
+
+        if(board->turn && board->turn % 2 + 1 == human){
+            mvchgat(8-toy, 2*tox, 2, A_NORMAL, 7, NULL);
+        }
 
         mvprintw(1, 20, "Player's turn:   \n");
         mvchgat(1, 35, 2, A_NORMAL, board->turn%2+5, NULL);
@@ -140,7 +146,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu\n", states_visited);
+            printw("states visited %lu, states pruned %lu (in %ld seconds)\n", states_visited, states_pruned, start);
             refresh();
 
             //first click
@@ -195,15 +201,29 @@ int main(){
             // human = human % 2 + 1;
 
             states_visited = 0;
+            states_pruned = 0;
 
 
             int best[4];
-            int res = negaMarx(board, 7, -INF, INF, best);
+
+            move(17, 0);
+
+            start = clock();
+            int res = negaMarx(board, 6, -INF, INF, best);
+            end = clock();
+
+            start = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
 
             fromx = best[0];
             fromy = best[1];
             tox = best[2];
             toy = best[3];
+
+            // printBo ard(board);
+            // move(7, 20);
+            // printw("val: %d", res);
+            // refresh();
+            // getch();
         }
 
 
@@ -536,13 +556,32 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
 //main function for AI
 int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
+    // printBoard(board);
+    // move(5, 20);
+    // printw("states visited %lu, states pruned %lu, %d", states_visited, states_pruned, board->turn%2+1);
+    // refresh();
+    // getch();
+
     int eval = evaluate(board);
     erase();
     states_visited++;
 
-    if(checkWin(board) || !depth){
-        return eval;
+
+    //REWRITE:
+    int terminal = checkWin(board);
+
+    if(terminal){
+        if(terminal == 1)
+            eval = 30000;
+        else if(terminal == 2)
+            eval = -30000;
+        else
+            eval = 0;
     }
+
+    if(terminal || !depth)
+        return eval;
+
     
     move_t moves;
     getMoves(board, board->turn%2+1, moves);
@@ -558,34 +597,12 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     for(int i=0; moves[capt][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
-        value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
 
-        // if(value){
-        //     printBoard(board);
-        //     printList(board);
-        //     move_t tmp;
-        //     getMoves(board, board->turn%2+1, tmp);
-        //     printMoves(tmp);
-        //     mvprintw(16, 20, "value: %d", value);
-        //     mvprintw(17, 20, "%d %d %d %d",  moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        //     refresh();
-        //     getch(); 
-        // }
+        value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
 
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn--;
 
-        // if(value){
-        //     printBoard(board);
-        //     printList(board);
-        //     move_t tmp;
-        //     getMoves(board, board->turn%2+1, tmp);
-        //     printMoves(tmp);
-        //     mvprintw(16, 20, "value: %d", value);
-        //     mvprintw(17, 20, "%d %d %d %d",  moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        //     refresh();
-        //     getch(); 
-        // }
 
         if(value > score){
             score = value;
@@ -594,14 +611,19 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
         if(score > alpha)
             alpha = score;
         //prune
-        if(score >= beta)
+        if(score >= beta){
+            states_pruned++;
             break;
+        }
     }
 
     best[0] = moves[capt][move][0];
     best[1] = moves[capt][move][1];
     best[2] = moves[capt][move][2];
     best[3] = moves[capt][move][3];
+
+    // printw("best %d: %d %d %d %d\n", depth, best[0], best[1], best[2], best[3]);
+    // refresh();
 
     return score;
 }
@@ -610,25 +632,41 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 //NOTE: check if I need to negate
 //TODO: how many bits are needed
 int evaluate(board_t *board){
-    return (board->piece_list_size[root] - board->piece_list_size[(root+1)%2]) * -1;
+    return (board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2]) * -1;
 }
 
 
-//return winning player (0 for none)
+//return 1 if current player is winning, 2 for the opponent (0 for none)
 int checkWin(board_t *board){
-    //end of board reached
-    for(int i=0; i<9; i++){
-        if(PLAYER(i, 8) == 1)
+    
+    //REWRITE:
+    if(board->turn % 2 + 1 == 1){
+        //end of board reached
+        for(int i=0; i<9; i++){
+            if(PLAYER(i, 8) == 1)
+                return 1;
+            if(PLAYER(i, 0) == 2)
+                return 2;
+        }
+
+        //no more pieces
+        if(!board->piece_list_size[0])
+            return 2;
+        if(!board->piece_list_size[1])
             return 1;
-        if(PLAYER(i, 0) == 2)
+    }else{
+        for(int i=0; i<9; i++){
+            if(PLAYER(i, 8) == 1)
+                return 2;
+            if(PLAYER(i, 0) == 2)
+                return 1;
+        }
+
+        if(!board->piece_list_size[0])
+            return 1;
+        if(!board->piece_list_size[1])
             return 2;
     }
-
-    //no more pieces
-    if(!board->piece_list_size[0])
-        return 2;
-    if(!board->piece_list_size[1])
-        return 1;
 
     // if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
     //     return (board->turn+1)%2+1;
