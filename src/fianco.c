@@ -282,14 +282,14 @@ board_t *initializeBoard(){
 
     int init_board[9][9] = 
     {
-        {0, 0, 0, 0, 0, 0, 0, 0, 2},
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 1, 0, 0, 0, 2, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
         {0, 0, 0, 1, 0, 0, 2, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 1, 0, 0, 2, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 1, 0, 0, 0, 0, 0},
         {0, 0, 0, 0, 0, 0, 0, 0, 0}
     };
 
@@ -593,9 +593,9 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 
     if(terminal){
         if(terminal == 1)
-            eval = 30000;
+            eval = 30000 - board->turn*10;
         else if(terminal == 2)
-            eval = -30000;
+            eval = -30000 + board->turn*10;
         else
             eval = 0;
     }
@@ -653,7 +653,7 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 //NOTE: check if I need to negate
 //TODO: how many bits are needed
 int evaluate(board_t *board){
-    return (board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2]) * -1;
+    return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
 }
 
 
