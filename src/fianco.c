@@ -106,9 +106,10 @@ int main(){
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     //TODO: ask if you want to play as white or black
-    int human = 2;
+    int human = 1;
     int flag;
     clock_t start, end;
+    int res;
 
     getMoves(board, 1, moves);
 
@@ -146,7 +147,9 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (in %ld seconds)\n", states_visited, states_pruned, start);
+            printw("states visited %lu, states pruned %lu (in %ld seconds)", states_visited, states_pruned, start);
+            if(board->turn)
+                printw(", ai res: %d\n", res);
             refresh();
 
             //first click
@@ -161,6 +164,11 @@ int main(){
                 if(board->turn && fromy == 3 && fromx >= 10 && fromx <= 12){
                     undoMove(board, move_history[board->turn-1][0], move_history[board->turn-1][1], move_history[board->turn-1][2], move_history[board->turn-1][3]);
                     board->turn--;
+                    if(board->turn){
+                        undoMove(board, move_history[board->turn-1][0], move_history[board->turn-1][1], move_history[board->turn-1][2], move_history[board->turn-1][3]);
+                        board->turn--;
+                    }
+
                     goto start_turn; //this is my code, and I shall do what I want!!!
                 }
 
@@ -209,7 +217,7 @@ int main(){
             move(17, 0);
 
             start = clock();
-            int res = negaMarx(board, 6, -INF, INF, best);
+            res = negaMarx(board, 11, -INF, INF, best);
             end = clock();
 
             start = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
@@ -259,17 +267,30 @@ board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
     //setting up the board
+    // int init_board[9][9] = 
+    // {
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2}
+    // };
+
     int init_board[9][9] = 
     {
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2}
+        {0, 0, 0, 0, 0, 0, 0, 0, 2},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0, 0, 2, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0, 0, 2, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0}
     };
 
     board->piece_list_size[0] = 0;
@@ -345,8 +366,8 @@ int boardCoords(int *x, int *y){
 
 //moves a piece can make
 int _moves[2][5][2] = {
-    {{-1, 0}, {1, 0}, {0, 1}, {-2, 2}, {2, 2}},
-    {{-1, 0}, {1, 0}, {0, -1}, {-2, -2}, {2, -2}}};
+    {{0, 1}, {-1, 0}, {1, 0}, {-2, 2}, {2, 2}},
+    {{0, -1}, {-1, 0}, {1, 0}, {-2, -2}, {2, -2}}};
 
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
 void getMoves(board_t *board, int player, move_t moves){

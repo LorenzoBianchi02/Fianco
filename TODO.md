@@ -15,6 +15,8 @@
 
 - define for board->turn % 2 + 1
 
+- IMPORTANT: shortest win and longest loss!!!
+
 ## IF TIME ##
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 
     moved[3][3] --> [3] changed moves (-1 of not changed)
