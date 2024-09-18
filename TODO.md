@@ -5,7 +5,6 @@
 
 - handle stalemate in separate function (now it isn't handled, commented in checkWin)
 
-- create a value_t (typedef)
 - create a move_t
 
 - turn to player define
@@ -15,6 +14,8 @@
 - confirm ai move
 
 - define for board->turn % 2 + 1
+
+- no forced captures in TT
 
 - IMPORTANT: shortest win and longest loss!!!
 
@@ -30,6 +31,7 @@
 
 - 32bits hash key? (calculate the risk of collision)
 
+- better transposition replacement scheme
 
 # WHO CARES #
 - change name of negamarx func

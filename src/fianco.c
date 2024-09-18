@@ -5,15 +5,6 @@
 #include <time.h>
 
 
-
-
-
-
-
-
-
-
-
 //--BOARD--//
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
@@ -32,7 +23,7 @@ the board is represented with a linked hashmap:
 typedef struct board_t{
     int8_t cell[9][9][2]; //player (so wich list aswell) and position in the list
     
-    int8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
+    uint8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
 
     uint8_t piece_list_size[2];  //amount of pieces in each list
 
@@ -48,9 +39,9 @@ board_t *initializeBoard();
 //--GENERAL--//
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 void getMoves(board_t *board, int player, move_t moves);
-int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
-int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
-void undoMove(board_t *board, int fromx, int fromy, int tox, int toy);
+int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
+int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
+void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 
 //--AI--//
 #define INF 32500 //fits into an int16_t
@@ -62,6 +53,9 @@ value_t evaluate(board_t *board);
 
 //--TRANSPOSITION TABLE--//
 //using 64 bits for hash, 24 (atm) for primary key
+#define KEY(val) (uint32_t)((val) & 0xFFFFFF)
+#define TT_SIZE 16777216
+
 #define NOT_PRESENT 0
 #define EXACT 1
 #define LOWER_BOUND 2
@@ -81,12 +75,12 @@ uint64_t hashTable[9][9][2]; //global rand values
 
 void initRandTable();
 uint64_t getHash(board_t *board_t);
-int lookupTT(transposition_table_t *table, board_t *board);
-void storeTT(transposition_table_t *table);
+int lookupTT(transposition_table_t *table, uint64_t key);
+void storeTT(transposition_table_t *table, uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth);
 
 //--GUI--//
 void printBoard(board_t *board);
-int boardCoords(int *x, int *y);
+int boardCoords(uint8_t *x, uint8_t *y);
 int checkWin(board_t *board);
 
 //--DEBUG--// (END: will at some point have to be removed)
@@ -98,6 +92,9 @@ uint64_t states_visited;
 uint64_t states_pruned;
 
 int main(){
+    mvprintw(0, 0, "test\n");
+    refresh();
+    getch();
     //---------NCURSES---------//
     setlocale(LC_ALL, "");
 
@@ -133,16 +130,19 @@ int main(){
     initRandTable();
 
     board_t *board = initializeBoard();
-    int fromx, fromy, tox, toy;
+    uint8_t fromx, fromy, tox, toy;
     move_t moves;
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
+
+    transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
     int human = 1;
     int flag;
     clock_t start, end;
     int res;
 
-    
+
+
     //TODO: ask if you want to play as white or black
 
     getMoves(board, 1, moves);
@@ -390,7 +390,7 @@ void printBoard(board_t *board){
 }
 
 //tranforms stdscr coords to [9][9] coords
-int boardCoords(int *x, int *y){
+int boardCoords(uint8_t *x, uint8_t *y){
     if(*x < 0 || *y < 0 || *x > 8 || *y > 8)
         return false;
 
@@ -409,8 +409,8 @@ int _moves[2][5][2] = {
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
 void getMoves(board_t *board, int player, move_t moves){
     int size[2] = {0, 0}; //captures and moves
-    int fromx, fromy, move;
-    int tox, toy, i, j;
+    uint8_t fromx, fromy, tox, toy;
+    int i, j, move;
 
     player--;
 
@@ -462,7 +462,7 @@ void getMoves(board_t *board, int player, move_t moves){
 
 
 //returns 0 if invalid, 1 for a normal move, 2 for a capture
-int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
+int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
     //check if move is inbounds
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
@@ -508,7 +508,7 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
 //Returns whethers the move has succesfully been done.
 //The hash also gets automaticly updated.
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
-int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
+int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move)
         return FALSE;
@@ -570,7 +570,7 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
 //Undos a given move.
 //The hash also gets automaticly updated.
 //It is guaranteed that this was the last move, and a valid one.
-void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
+void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
     int move;
     if(abs(fromx - tox) == 2)
         move = 2;
@@ -781,13 +781,32 @@ uint64_t getHash(board_t *board){
 }
 
 
-//TODO:
-int lookupTT(transposition_table_t *table, board_t *board){
-    return 0;
+//Retruns 1 if key is present in table
+int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
+    uint32_t low_key = KEY(key);
+    if(table[low_key].type && table[low_key].hashkey == key)
+        return TRUE;
+    
+    return FALSE;
 }
 
-//TODO:
-void storeTT(transposition_table_t *table){
+//NOTE: currently using DEEP replacement scheme
+void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth){ //TODO: add args    
+    //depth here is equal to how much further I will look (have looked)
+    uint32_t key_small = KEY(key); 
+    if(!lookupTT(table, key) || table[key_small].depth < depth){
+        table[key_small].value = value;
+        table[key_small].type = type;
+        table[key_small].moves[0] = fromx;
+        table[key_small].moves[1] = fromy;
+        table[key_small].moves[2] = tox;
+        table[key_small].moves[3] = toy;
+        
+        table[key_small].depth = depth;
+
+        table[key_small].hashkey = key;
+        
+    }
     return;
 }
 
