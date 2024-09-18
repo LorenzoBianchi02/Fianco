@@ -1,0 +1,1 @@
+- Pre TT: depth 7 f4f5 (states vis: 335881, states pruned: 28934, seconds: 3159, ai res: -80)
