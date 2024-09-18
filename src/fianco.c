@@ -233,6 +233,8 @@ int main(){
                     }
                 }
             }
+
+                
         
 
             mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
