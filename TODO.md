@@ -1,4 +1,6 @@
 ### PRIORITY# ##
+- transopisition table
+
 - handle 3 move repition
 
 - handle stalemate in separate function (now it isn't handled, commented in checkWin)
@@ -23,6 +25,8 @@
 - to check possible moves, you shound't have to look at all pieces, just the ones that are affected by the (up to) 3 cells that changed state
 
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient
+
+- pondering
 
 
 # WHO CARES #

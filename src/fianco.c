@@ -12,9 +12,10 @@
 
 #define CAN_CAPT(moves) moves[1][0][0] != -1 ? 1 : 0
 
-typedef int8_t move_t[2][76][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 
-#define INF 40000 
+#define INF 32500
+
 
 
 /*
@@ -25,35 +26,55 @@ the board is represented with a linked hashmap:
 */
 
 typedef struct board_t{
-    int8_t cell[9][9][2]; //player (so wich list aswell) and position in the list //NOTE: maybe char can be used
+    int8_t cell[9][9][2]; //player (so wich list aswell) and position in the list
     
     int8_t piece_list[2][16][2]; //[2]: player, [16][2]: piece position (x, y)
 
     uint8_t piece_list_size[2];  //amount of pieces in each list
 
     uint16_t turn;
+
+    uint64_t hash;
 }board_t;
 
 
+typedef int16_t value_t;
 
-typedef struct result_t{
-    int score;
-    int move;
-}result_t;
+
+#define EXACT 0
+#define LOWER_BOUND 1
+#define HIGHER_BOUND 2
+
+
+typedef struct transposition_table_t{
+    value_t value;
+    uint8_t type;
+    uint8_t moves[4];
+    uint8_t depth;
+
+    uint64_t hashkey;
+
+} transposition_table_t;
 
 
 
 board_t *initializeBoard();
 
+
 //general functions
 void getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
-void undoMove(board_t *board, int fromx, int fromy, int tox, int toy); //it is guaranteed the move is ok
+void undoMove(board_t *board, int fromx, int fromy, int tox, int toy);
 
 //ai frunction
-int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
-int evaluate(board_t *board);
+value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
+value_t evaluate(board_t *board);
+
+//transposition table
+uint64_t randTable[9][9][2];
+void initRandTable();
+uint64_t getHash(board_t *board_t);
 
 //human functions
 void printBoard(board_t *board);
@@ -100,9 +121,12 @@ int main(){
 
 
     //---------MAIN---------//
+    srand(time(0));
+    initRandTable();
+
     board_t *board = initializeBoard();
     int fromx, fromy, tox, toy;
-    move_t moves; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+    move_t moves;
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     //TODO: ask if you want to play as white or black
@@ -117,7 +141,7 @@ int main(){
     while(!checkWin(board)){
         start_turn:
 
-        erase(); //END: remove
+        // erase(); //END: remove
         printBoard(board);
 
         if(board->turn && board->turn % 2 + 1 == human){
@@ -322,6 +346,9 @@ board_t *initializeBoard(){
     board->piece_list[1][board->piece_list_size[1]][0] = -1;
 
     board->turn = 0;
+
+    //get hash
+    board->hash = getHash(board);
 
     return board;
 }
@@ -576,14 +603,14 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
 
 
 //main function for AI
-int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
+value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     // printBoard(board);
     // move(5, 20);
     // printw("states visited %lu, states pruned %lu, %d", states_visited, states_pruned, board->turn%2+1);
     // refresh();
     // getch();
 
-    int eval = evaluate(board);
+    value_t eval = evaluate(board);
     erase();
     states_visited++;
 
@@ -610,8 +637,8 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     //TODO: stalemate should be checked here
 
     //TODO: check how many bits are needed
-    int score = -INF, move;
-    int value;
+    int move;
+    value_t score = -INF, value;
 
     int capt = CAN_CAPT(moves);
 
@@ -652,7 +679,7 @@ int negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 
 //NOTE: check if I need to negate
 //TODO: how many bits are needed
-int evaluate(board_t *board){
+value_t evaluate(board_t *board){
     return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
 }
 
@@ -693,6 +720,29 @@ int checkWin(board_t *board){
     //     return (board->turn+1)%2+1;
 
     return 0;
+}
+
+
+void initRandTable(){
+    for(int i=0; i<9; i++){
+        for(int j=0; j<9; j++){
+            randTable[i][j][0] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
+            randTable[i][j][1] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
+        }
+    }
+}
+
+uint64_t getHash(board_t *board){
+    uint64_t hash = 0;
+    int i, j;
+    
+    for(i=0; i<9; i++){
+        for(j=0; j<9; j++){
+            hash ^= randTable[i][j][PLAYER(i, j)];
+        }
+    }
+
+    return hash;
 }
 
 
