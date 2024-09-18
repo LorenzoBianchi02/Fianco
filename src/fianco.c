@@ -72,7 +72,7 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
 value_t evaluate(board_t *board);
 
 //transposition table
-uint64_t randTable[9][9][2];
+uint64_t hashTable[9][9][2];
 void initRandTable();
 uint64_t getHash(board_t *board_t);
 
@@ -171,7 +171,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (in %ld seconds)", states_visited, states_pruned, start);
+            printw("states visited %lu, states pruned %lu (in %ld seconds), hash: %ld", states_visited, states_pruned, start, board->hash);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -196,7 +196,7 @@ int main(){
                     goto start_turn; //this is my code, and I shall do what I want!!!
                 }
 
-            }while(!boardCoords(&fromx, &fromy) || !PLAYER(fromx, fromy) || PLAYER(fromx, fromy) != board->turn % 2 + 1); //NOTE: this may the only place where it is checked that the piece picked needs to be of the current player
+            }while(!boardCoords(&fromx, &fromy) || !PLAYER(fromx, fromy) || PLAYER(fromx, fromy) != board->turn % 2 + 1); //NOTE: this may be the only place where it is checked that the piece picked needs to be of the current player
 
             // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
@@ -230,7 +230,7 @@ int main(){
 
         //------DESTROYER-----//
         else{
-            // human = human % 2 + 1;
+            // human = human % 2 + 1; //uncomment to only play against yourself
 
             states_visited = 0;
             states_pruned = 0;
@@ -496,16 +496,23 @@ int validMove(board_t *board, int fromx, int fromy, int tox, int toy){
 }
 
 //Returns whethers the move has succesfully been done.
+//The hash also gets automaticly updated.
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
 int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move)
         return FALSE;
+
+    int list_from = PLAYER(fromx, fromy) - 1;
     
+    //hash from
+    board->hash ^= hashTable[fromx][fromy][list_from];
+
     if(move == 1){
+
         //change coords
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox;
+        board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
         board->cell[tox][toy][0] = board->cell[fromx][fromy][0];
@@ -514,37 +521,45 @@ int movePiece(board_t *board, int fromx, int fromy, int tox, int toy){
         //remove starting pos
         board->cell[fromx][fromy][0] = 0;
 
+
+
     }else if(move == 2){
-        int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
+        int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
 
         //move capturing piece
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox;
+        board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
 
-        PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
+        PLAYER(tox, toy) = PLAYER(fromx, fromy);
         POSITION(tox, toy) = POSITION(fromx, fromy);
         PLAYER(fromx, fromy) = 0;
 
         //remove captured piece (also from list)
         int x = fromx + signx, y = fromy+signy;
-        int list = PLAYER(x, y) - 1;
+        int list_xy = PLAYER(x, y) - 1;
         int oldpos = POSITION(fromx+signx, fromy+signy);
 
-        board->piece_list[list][oldpos][0] = board->piece_list[list][board->piece_list_size[list] - 1][0];
-        board->piece_list[list][oldpos][1] = board->piece_list[list][board->piece_list_size[list] - 1][1];
+        board->hash ^= hashTable[x][y][list_xy];
 
-        board->cell[board->piece_list[list][oldpos][0]][board->piece_list[list][oldpos][1]][1] = oldpos;
+        board->piece_list[list_xy][oldpos][0] = board->piece_list[list_xy][board->piece_list_size[list_xy] - 1][0];
+        board->piece_list[list_xy][oldpos][1] = board->piece_list[list_xy][board->piece_list_size[list_xy] - 1][1];
+
+        board->cell[board->piece_list[list_xy][oldpos][0]][board->piece_list[list_xy][oldpos][1]][1] = oldpos;
         board->cell[x][y][0] = 0;
 
-        board->piece_list_size[list]--;
+        board->piece_list_size[list_xy]--;
     }
 
-    return TRUE;
+    //hash to
+    board->hash ^= hashTable[tox][toy][PLAYER(tox, toy) - 1];
+
+    return move;
 }
 
 
-//undos a given move
-//guaranteed that this was the last move, and a valid one
+//Undos a given move.
+//The hash also gets automaticly updated.
+//It is guaranteed that this was the last move, and a valid one.
 void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
     int move;
     if(abs(fromx - tox) == 2)
@@ -561,12 +576,17 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
     tmp = toy;
     toy = fromy;
     fromy = tmp;
+
+    int list_from = PLAYER(fromx, fromy) - 1;
+    
+    //hash from
+    board->hash ^= hashTable[fromx][fromy][list_from];
     
 
     if(move == 1){
         //change coords
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
         board->cell[tox][toy][0] = board->cell[fromx][fromy][0];
@@ -579,17 +599,18 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
 
         //move capturing piece
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
-        board->piece_list[PLAYER(fromx, fromy) - 1][POSITION(fromx, fromy)][1] = toy;
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
 
         PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
         POSITION(tox, toy) = POSITION(fromx, fromy);
         PLAYER(fromx, fromy) = 0;
 
-        //read captured piece (also from list)
+        //re-add captured piece (also from list)
         int x = fromx + signx, y = fromy+signy;
         int list = PLAYER(tox, toy) % 2;
         int oldpos = POSITION(fromx+signx, fromy+signy);
+
 
         board->piece_list[list][board->piece_list_size[list]][0] = x;
         board->piece_list[list][board->piece_list_size[list]][1] = y;
@@ -598,7 +619,13 @@ void undoMove(board_t *board, int fromx, int fromy, int tox, int toy){
         POSITION(x, y) = board->piece_list_size[list];
         
         board->piece_list_size[list]++;
+
+        //hash added piece
+        board->hash ^= hashTable[x][y][list];
     }
+
+    //hash to
+    board->hash ^= hashTable[tox][toy][PLAYER(tox, toy) - 1];
 }
 
 
@@ -677,8 +704,6 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 }
 
 
-//NOTE: check if I need to negate
-//TODO: how many bits are needed
 value_t evaluate(board_t *board){
     return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
 }
@@ -726,8 +751,8 @@ int checkWin(board_t *board){
 void initRandTable(){
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-            randTable[i][j][0] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
-            randTable[i][j][1] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
+            hashTable[i][j][0] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
+            hashTable[i][j][1] = (((uint64_t)(rand() % RAND_MAX)) << 32 | rand() % RAND_MAX);
         }
     }
 }
@@ -738,7 +763,7 @@ uint64_t getHash(board_t *board){
     
     for(i=0; i<9; i++){
         for(j=0; j<9; j++){
-            hash ^= randTable[i][j][PLAYER(i, j)];
+            hash ^= hashTable[i][j][PLAYER(i, j)];
         }
     }
 
