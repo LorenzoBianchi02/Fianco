@@ -4,6 +4,17 @@
 #include <locale.h>
 #include <time.h>
 
+
+
+
+
+
+
+
+
+
+
+//--BOARD--//
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
 
@@ -12,19 +23,12 @@
 
 #define CAN_CAPT(moves) moves[1][0][0] != -1 ? 1 : 0
 
-typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
-
-#define INF 32500
-
-
-
 /*
 the board is represented with a linked hashmap:
     each board cell is present in map.
     If the cell has a piece on it, then it will be
     present in the corrisponding "list";
 */
-
 typedef struct board_t{
     int8_t cell[9][9][2]; //player (so wich list aswell) and position in the list
     
@@ -37,14 +41,31 @@ typedef struct board_t{
     uint64_t hash;
 }board_t;
 
+board_t *initializeBoard();
 
+
+
+//--GENERAL--//
+typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
+void getMoves(board_t *board, int player, move_t moves);
+int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
+int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
+void undoMove(board_t *board, int fromx, int fromy, int tox, int toy);
+
+//--AI--//
+#define INF 32500 //fits into an int16_t
 typedef int16_t value_t;
 
+value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
+value_t evaluate(board_t *board);
 
-#define EXACT 0
-#define LOWER_BOUND 1
-#define HIGHER_BOUND 2
 
+//--TRANSPOSITION TABLE--//
+//using 64 bits for hash, 24 (atm) for primary key
+#define NOT_PRESENT 0
+#define EXACT 1
+#define LOWER_BOUND 2
+#define HIGHER_BOUND 3
 
 typedef struct transposition_table_t{
     value_t value;
@@ -56,36 +77,23 @@ typedef struct transposition_table_t{
 
 } transposition_table_t;
 
+uint64_t hashTable[9][9][2]; //global rand values
 
-
-board_t *initializeBoard();
-
-
-//general functions
-void getMoves(board_t *board, int player, move_t moves);
-int validMove(board_t *board, int fromx, int fromy, int tox, int toy);
-int movePiece(board_t *board, int fromx, int fromy, int tox, int toy);
-void undoMove(board_t *board, int fromx, int fromy, int tox, int toy);
-
-//ai frunction
-value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
-value_t evaluate(board_t *board);
-
-//transposition table
-uint64_t hashTable[9][9][2];
 void initRandTable();
 uint64_t getHash(board_t *board_t);
+int lookupTT(transposition_table_t *table, board_t *board);
+void storeTT(transposition_table_t *table);
 
-//human functions
+//--GUI--//
 void printBoard(board_t *board);
 int boardCoords(int *x, int *y);
 int checkWin(board_t *board);
 
-//debug functions (END: will at some point have to be removed)
+//--DEBUG--// (END: will at some point have to be removed)
 void printList(board_t *board);
 void printMoves(move_t moves);
 
-//statistics
+//--STATS--//
 uint64_t states_visited;
 uint64_t states_pruned;
 
@@ -106,7 +114,7 @@ int main(){
     init_color(COLOR_YELLOW, 804, 667, 490);
     
     //END: remove not used pairs
-    // NB: be carefull when changing the order
+    //NB: be carefull when changing the order
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);    //board color 1
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
     init_pair(4, COLOR_WHITE, COLOR_YELLOW);    //piece selected 1
@@ -129,11 +137,13 @@ int main(){
     move_t moves;
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
-    //TODO: ask if you want to play as white or black
     int human = 1;
     int flag;
     clock_t start, end;
     int res;
+
+    
+    //TODO: ask if you want to play as white or black
 
     getMoves(board, 1, moves);
 
@@ -241,7 +251,7 @@ int main(){
             move(17, 0);
 
             start = clock();
-            res = negaMarx(board, 11, -INF, INF, best);
+            res = negaMarx(board, 14, -INF, INF, best);
             end = clock();
 
             start = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
@@ -290,7 +300,7 @@ int main(){
 board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
-    //setting up the board
+    // setting up the board
     // int init_board[9][9] = 
     // {
     //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
@@ -768,6 +778,17 @@ uint64_t getHash(board_t *board){
     }
 
     return hash;
+}
+
+
+//TODO:
+int lookupTT(transposition_table_t *table, board_t *board){
+    return 0;
+}
+
+//TODO:
+void storeTT(transposition_table_t *table){
+    return;
 }
 
 

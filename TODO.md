@@ -28,6 +28,8 @@
 
 - pondering
 
+- 32bits hash key? (calculate the risk of collision)
+
 
 # WHO CARES #
 - change name of negamarx func
