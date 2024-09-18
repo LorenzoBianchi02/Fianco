@@ -67,7 +67,7 @@ typedef struct transposition_table_t{
     uint8_t moves[4];
     uint8_t depth;
 
-    uint64_t hashkey;
+    uint64_t key;
 
 } transposition_table_t;
 
@@ -142,6 +142,7 @@ int main(){
     int res;
 
 
+    int tmp = lookupTT(transpos_table, board->hash);
 
     //TODO: ask if you want to play as white or black
 
@@ -786,7 +787,7 @@ uint64_t getHash(board_t *board){
 //Retruns 1 if key is present in table
 int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
     uint32_t low_key = KEY(key);
-    if(table[low_key].type && table[low_key].hashkey == key)
+    if(table[low_key].type && table[low_key].key == key)
         return TRUE;
     
     return FALSE;
@@ -806,7 +807,7 @@ void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, 
         
         table[key_small].depth = depth;
 
-        table[key_small].hashkey = key;
+        table[key_small].key = key;
         
     }
     return;

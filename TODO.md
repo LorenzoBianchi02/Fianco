@@ -16,6 +16,7 @@
 - define for board->turn % 2 + 1
 
 - no forced captures in TT
+- bigger TT
 
 - IMPORTANT: shortest win and longest loss!!!
 
