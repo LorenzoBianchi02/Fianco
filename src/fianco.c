@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <locale.h>
 #include <time.h>
+#include <string.h>
 
 
 //--BOARD--//
@@ -37,18 +38,13 @@ board_t *initializeBoard();
 
 
 //--GENERAL--//
+typedef int16_t value_t;
+
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 void getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
-
-//--AI--//
-#define INF 32500 //fits into an int16_t
-typedef int16_t value_t;
-
-value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]);
-value_t evaluate(board_t *board);
 
 
 //--TRANSPOSITION TABLE--//
@@ -59,7 +55,7 @@ value_t evaluate(board_t *board);
 #define NOT_PRESENT 0
 #define EXACT 1
 #define LOWER_BOUND 2
-#define HIGHER_BOUND 3
+#define UPPER_BOUND 3
 
 typedef struct transposition_table_t{
     value_t value;
@@ -75,8 +71,17 @@ uint64_t hashTable[9][9][2]; //global rand values
 
 void initRandTable();
 uint64_t getHash(board_t *board_t);
-int lookupTT(transposition_table_t *table, uint64_t key);
-void storeTT(transposition_table_t *table, uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth);
+int lookupTT(transposition_table_t *transpos, uint64_t key);
+void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth);
+
+
+//--AI--//
+#define INF 32500 //fits into an int16_t
+
+value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, int best[4]);
+value_t evaluate(board_t *board);
+
+
 
 //--GUI--//
 void printBoard(board_t *board);
@@ -86,10 +91,13 @@ int checkWin(board_t *board);
 //--DEBUG--// (END: will at some point have to be removed)
 void printList(board_t *board);
 void printMoves(move_t moves);
+int debug;
+#define DEBUG(string) if(debug){printw(string);refresh();getch();}
 
 //--STATS--//
 uint64_t states_visited;
 uint64_t states_pruned;
+uint64_t TT_found;
 
 int main(){
     mvprintw(0, 0, "test\n");
@@ -136,7 +144,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 1;
+    int human = 2;
     int flag;
     clock_t start, end;
     int res;
@@ -182,7 +190,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (in %ld seconds), hash: %ld", states_visited, states_pruned, start, board->hash);
+            printw("states visited %lu, states pruned %lu (%lu in TT) (in %ld seconds), hash: %ld", states_visited, states_pruned, TT_found, start, board->hash);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -247,28 +255,22 @@ int main(){
 
             states_visited = 0;
             states_pruned = 0;
-
+            TT_found = 0;
 
             int best[4];
 
             move(17, 0);
 
             start = clock();
-            res = negaMarx(board, 14, -INF, INF, best);
+            res = negaMarx(board, transpos_table, 11, -INF, INF, best);
             end = clock();
 
-            start = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
+            start = ((double) (end - start)) / CLOCKS_PER_SEC;
 
             fromx = best[0];
             fromy = best[1];
             tox = best[2];
             toy = best[3];
-
-            // printBo ard(board);
-            // move(7, 20);
-            // printw("val: %d", res);
-            // refresh();
-            // getch();
         }
 
 
@@ -304,31 +306,31 @@ board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
     // setting up the board
-    // int init_board[9][9] = 
-    // {
-    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
-    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
-    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
-    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
-    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
-    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
-    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
-    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
-    //     {1, 0, 0, 0, 0, 0, 0, 0, 2}
-    // };
-
     int init_board[9][9] = 
     {
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 1, 0, 0, 0, 2, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 1, 0, 0, 2, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0}
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2},
+        {1, 0, 0, 1, 0, 2, 0, 0, 2},
+        {1, 0, 1, 0, 0, 0, 2, 0, 2},
+        {1, 1, 0, 0, 0, 0, 0, 2, 2},
+        {1, 0, 0, 0, 0, 0, 0, 0, 2}
     };
+
+    // int init_board[9][9] = 
+    // {
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 1, 0, 0, 0, 2, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 0, 1, 0, 0, 2, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 0, 0, 0, 0, 0, 0, 0, 0}
+    // };
 
     board->piece_list_size[0] = 0;
     board->piece_list_size[1] = 0;
@@ -643,15 +645,35 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
 
 //main function for AI
-value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
-    // printBoard(board);
-    // move(5, 20);
-    // printw("states visited %lu, states pruned %lu, %d", states_visited, states_pruned, board->turn%2+1);
-    // refresh();
-    // getch();
+value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, int best[4]){
+    int old_alpha = alpha;
 
-    value_t eval = evaluate(board);
-    erase();
+    //REWRITE: can I do transposition_table_t tmp = transpos[KEY(board->hash)]???
+    if(lookupTT(transpos, board->hash) && transpos[KEY(board->hash)].depth >= depth){
+        uint32_t key = KEY(board->hash);
+        value_t value = transpos[key].value;
+        int type = transpos[key].type;
+
+        if(type == EXACT)
+            return value;
+        if(type == LOWER_BOUND){
+            if(value > alpha)
+                alpha = value;
+        }else if(type == UPPER_BOUND){
+            if(value < beta)
+                beta = value;
+        }
+
+        if(alpha >= beta){
+            states_pruned++; //NOTE: is this a pruning??
+            TT_found++;
+            memcpy(best, transpos[key].moves, 4); //TEST:
+            return transpos[key].value;
+        }
+    }
+
+
+    value_t eval;
     states_visited++;
 
 
@@ -660,12 +682,13 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 
     if(terminal){
         if(terminal == 1)
-            eval = 30000 - board->turn*10;
+            eval = 30000 - board->turn*10;      //REWRITE: should depend on board->turn, only on how far it has searched so far
         else if(terminal == 2)
             eval = -30000 + board->turn*10;
         else
             eval = 0;
-    }
+    }else
+        eval = evaluate(board);
 
     if(terminal || !depth)
         return eval;
@@ -674,10 +697,13 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
     move_t moves;
     getMoves(board, board->turn%2+1, moves);
 
-    //TODO: stalemate should be checked here
+    //check stalemate
+    if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
+        return -30000 + board->turn*10;
 
-    //TODO: check how many bits are needed
-    int move;
+
+
+    int move = 0;
     value_t score = -INF, value;
 
     int capt = CAN_CAPT(moves);
@@ -686,7 +712,7 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
 
-        value = -1 * negaMarx(board, depth-1, -beta, -alpha, best);
+        value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn--;
@@ -705,10 +731,17 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
         }
     }
 
+
+    int bound = EXACT;
+    if(score <= old_alpha) bound = UPPER_BOUND;
+    else if(score >= beta) bound = LOWER_BOUND;
+
     best[0] = moves[capt][move][0];
     best[1] = moves[capt][move][1];
     best[2] = moves[capt][move][2];
     best[3] = moves[capt][move][3];
+
+    storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
 
     // printw("best %d: %d %d %d %d\n", depth, best[0], best[1], best[2], best[3]);
     // refresh();
@@ -718,11 +751,23 @@ value_t negaMarx(board_t *board, int depth, int alpha, int beta, int best[4]){
 
 
 value_t evaluate(board_t *board){
+    int count = 0;
+    // if(PLAYER(3, 3) - 1 == board->turn % 2) count++;
+    // if(PLAYER(4, 3) - 1 == board->turn % 2) count++;
+    // if(PLAYER(5, 3) - 1 == board->turn % 2) count++;
+    // if(PLAYER(3, 4) - 1 == board->turn % 2) count++;
+    // if(PLAYER(4, 4) - 1 == board->turn % 2) count++;
+    // if(PLAYER(5, 4) - 1 == board->turn % 2) count++;
+    // if(PLAYER(3, 5) - 1 == board->turn % 2) count++;
+    // if(PLAYER(4, 5) - 1 == board->turn % 2) count++;
+    // if(PLAYER(5, 5) - 1 == board->turn % 2) count++;
+    
     return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
 }
 
 
-//return 1 if current player is winning, 2 for the opponent (0 for none)
+//Return 1 if current player is winning, 2 for the opponent (0 for none).
+//Stalemate does not get checked here for efficiency reasons
 int checkWin(board_t *board){
     
     //REWRITE:
@@ -753,9 +798,6 @@ int checkWin(board_t *board){
         if(!board->piece_list_size[1])
             return 2;
     }
-
-    // if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
-    //     return (board->turn+1)%2+1;
 
     return 0;
 }
@@ -789,14 +831,16 @@ int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
     uint32_t low_key = KEY(key);
     if(table[low_key].type && table[low_key].key == key)
         return TRUE;
-    
+
     return FALSE;
 }
 
 //NOTE: currently using DEEP replacement scheme
 void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth){ //TODO: add args    
     //depth here is equal to how much further I will look (have looked)
-    uint32_t key_small = KEY(key); 
+    uint32_t key_small = KEY(key);
+
+
     if(!lookupTT(table, key) || table[key_small].depth < depth){
         table[key_small].value = value;
         table[key_small].type = type;
@@ -810,7 +854,6 @@ void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, 
         table[key_small].key = key;
         
     }
-    return;
 }
 
 

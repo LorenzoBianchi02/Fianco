@@ -1,5 +1,7 @@
 ### PRIORITY# ##
-- transopisition table
+- clear transopisition table
+
+- consider position in eval
 
 - handle 3 move repition
 
@@ -18,7 +20,9 @@
 - no forced captures in TT
 - bigger TT
 
-- IMPORTANT: shortest win and longest loss!!!
+- 3fold repitition
+
+- windowing
 
 ## IF TIME ##
 - idea to remember last move effiently: each node remembers up to 3 cells that change their status 

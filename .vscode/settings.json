@@ -26,6 +26,11 @@
             "color": "white",
             "backgroundColor": "green",
             "overviewRulerColor": "green"
+        }, {
+            "text": "TEST:",
+            "color": "white",
+            "backgroundColor": "cyan",
+            "overviewRulerColor": "cyan"
         }
         
 
