@@ -97,7 +97,7 @@ int debug;
 //--STATS--//
 uint64_t states_visited;
 uint64_t states_pruned;
-uint64_t TT_found;
+uint64_t TT_found; 
 
 int main(){
     mvprintw(0, 0, "test\n");
@@ -160,7 +160,7 @@ int main(){
     while(!checkWin(board)){
         start_turn:
 
-        // erase(); //END: remove
+        erase(); //END: remove
         printBoard(board);
 
         if(board->turn && board->turn % 2 + 1 == human){
@@ -257,6 +257,9 @@ int main(){
             states_pruned = 0;
             TT_found = 0;
 
+            //clear TT
+            memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
+
             int best[4];
 
             move(17, 0);
@@ -271,6 +274,8 @@ int main(){
             fromy = best[1];
             tox = best[2];
             toy = best[3];
+
+            // human = human % 2 + 1;
         }
 
 
@@ -667,7 +672,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         if(alpha >= beta){
             states_pruned++; //NOTE: is this a pruning??
             TT_found++;
-            memcpy(best, transpos[key].moves, 4); //TEST:
+            memcpy(best, transpos[key].moves, 4 * 4); //TEST: //ERROR: moves are ints, 4 * 4 bytes needed
             return transpos[key].value;
         }
     }
@@ -752,15 +757,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
 value_t evaluate(board_t *board){
     int count = 0;
-    // if(PLAYER(3, 3) - 1 == board->turn % 2) count++;
-    // if(PLAYER(4, 3) - 1 == board->turn % 2) count++;
-    // if(PLAYER(5, 3) - 1 == board->turn % 2) count++;
-    // if(PLAYER(3, 4) - 1 == board->turn % 2) count++;
-    // if(PLAYER(4, 4) - 1 == board->turn % 2) count++;
-    // if(PLAYER(5, 4) - 1 == board->turn % 2) count++;
-    // if(PLAYER(3, 5) - 1 == board->turn % 2) count++;
-    // if(PLAYER(4, 5) - 1 == board->turn % 2) count++;
-    // if(PLAYER(5, 5) - 1 == board->turn % 2) count++;
     
     return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
 }
