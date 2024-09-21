@@ -1,4 +1,6 @@
 ### PRIORITY# ##
+- why do I need to save best move in TT
+
 - consider position in eval
 
 - handle 3 move repition

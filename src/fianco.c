@@ -78,7 +78,7 @@ void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8
 //--AI--//
 #define INF 32500 //fits into an int16_t
 
-value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, int best[4]);
+value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
 value_t evaluate(board_t *board);
 
 
@@ -260,7 +260,7 @@ int main(){
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
-            int best[4];
+            uint8_t best[4];
 
             move(17, 0);
 
@@ -650,7 +650,7 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
 
 //main function for AI
-value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, int best[4]){
+value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
     int old_alpha = alpha;
 
     //REWRITE: can I do transposition_table_t tmp = transpos[KEY(board->hash)]???
@@ -672,7 +672,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         if(alpha >= beta){
             states_pruned++; //NOTE: is this a pruning??
             TT_found++;
-            memcpy(best, transpos[key].moves, 4 * 4); //TEST: //ERROR: moves are ints, 4 * 4 bytes needed
+            memcpy(best, transpos[key].moves, 4);
             return transpos[key].value;
         }
     }
