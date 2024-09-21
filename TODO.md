@@ -1,4 +1,5 @@
 ### PRIORITY# ##
+- umpire should check for stalemate
 - why do I need to save best move in TT
 
 - consider position in eval
@@ -21,6 +22,7 @@
 - bigger TT
 
 - windowing
+
 
 - end game DB
 - opening book

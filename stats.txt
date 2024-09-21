@@ -1,4 +1,12 @@
-- Pre TT: depth 7 f4f5 (states vis: 335.881, states pruned: 28.934, mili-seconds: 3159, ai res: -80)
-- Pre TT: depth 12 first move (states vis: 686.169.745, states pruned: 221.473.017, time: 144secs, ai res: 0)
+- Pre TT: 
+    depth 7 f4f5 (states vis: 335.881, states pruned: 28.934, mili-seconds: 3159, ai res: -80)
+- Pre TT: 
+    depth 12 first move (states vis: 686.169.745, states pruned: 221.473.017, time: 144secs, ai res: 0)
 
-- With TT: depth 12 first move (states vis: 707.96.522, states pruned: 35.097.665, of wich in TT: 19.254.672, time: 20secs, ai res: 120)
+- With TT: 
+    depth 12 first move (states vis: 707.96.522, states pruned: 35.097.665, of wich in TT: 19.254.672, time: 20secs, ai res: 120)
+
+- With iterative deepinging and root reordering: 
+    depth 12 first move (states vis: 19.633.698, states pruned: 8.400.529, of wich in TT: 5.409.203, time: 4secs, ai res: 120) //TODO: should redo with nothing cashed (should be ~25 secs with 115milion)
+    depth 13 first move (states vis: 262.028.439, states pruned: 76.267.460, of wich in TT: 42.652.309, time: 54secs, ai res: -130)
+    

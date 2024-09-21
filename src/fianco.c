@@ -31,6 +31,8 @@ typedef struct board_t{
     uint16_t turn;
 
     uint64_t hash;
+
+    uint8_t depth;
 }board_t;
 
 board_t *initializeBoard();
@@ -79,6 +81,7 @@ void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8
 #define INF 32500 //fits into an int16_t
 
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
+value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves);
 value_t evaluate(board_t *board);
 
 
@@ -139,7 +142,6 @@ int main(){
 
     board_t *board = initializeBoard();
     uint8_t fromx, fromy, tox, toy;
-    move_t moves;
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
@@ -150,10 +152,11 @@ int main(){
     int res;
 
 
-    int tmp = lookupTT(transpos_table, board->hash);
+    int tmp = lookupTT(transpos_table, board->hash);    //FIXME: why am I doing this?
 
     //TODO: ask if you want to play as white or black
 
+    move_t moves;
     getMoves(board, 1, moves);
 
 
@@ -184,6 +187,7 @@ int main(){
 
 
         getMoves(board, board->turn%2+1, moves);
+        int capt = CAN_CAPT(moves);
         printMoves(moves);
         flag = 1;
 
@@ -260,20 +264,24 @@ int main(){
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
-            uint8_t best[4];
-
-            move(17, 0);
-
             start = clock();
-            res = negaMarx(board, transpos_table, 11, -INF, INF, best);
+
+            //TODO: aspiration search (windows)
+
+
+
+            for(int i=1; i<=12; i++){
+                res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
+            }
+
             end = clock();
 
             start = ((double) (end - start)) / CLOCKS_PER_SEC;
 
-            fromx = best[0];
-            fromy = best[1];
-            tox = best[2];
-            toy = best[3];
+            fromx = moves[capt][0][0];
+            fromy = moves[capt][0][1];
+            tox = moves[capt][0][2];
+            toy = moves[capt][0][3];
 
             // human = human % 2 + 1;
         }
@@ -329,9 +337,9 @@ board_t *initializeBoard(){
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 1, 0, 0, 0, 2, 0, 0},
+    //     {0, 0, 1, 0, 2, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 1, 0, 0, 2, 0, 0},
+    //     {0, 0, 0, 1, 0, 2, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -369,6 +377,8 @@ board_t *initializeBoard(){
 
     //get hash
     board->hash = getHash(board);
+
+    board->depth = 0;
 
     return board;
 }
@@ -687,9 +697,9 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     if(terminal){
         if(terminal == 1)
-            eval = 30000 - board->turn*10;      //REWRITE: should depend on board->turn, only on how far it has searched so far
+            eval = 30000 - board->depth*10;      //REWRITE: should depend on board->depth, only on how far it has searched so far
         else if(terminal == 2)
-            eval = -30000 + board->turn*10;
+            eval = -30000 + board->depth*10;
         else
             eval = 0;
     }else
@@ -704,7 +714,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     //check stalemate
     if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
-        return -30000 + board->turn*10;
+        return -30000 + board->depth*10;
 
 
 
@@ -716,11 +726,13 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     for(int i=0; moves[capt][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
+        board->depth++;
 
         value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn--;
+        board->depth--;
 
 
         if(value > score){
@@ -754,11 +766,89 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     return score;
 }
 
+value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves){
+    states_visited++;
+
+    int i;
+    value_t score = -INF, value;
+    uint8_t best[4]; //FIXME: not needed right?
+
+    value_t scores[50];
+
+    int capt = CAN_CAPT(moves);
+
+    for(i=0; moves[capt][i][0] != -1; i++){
+        movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        board->turn++;
+        board->depth++;
+
+        value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+
+        undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        board->turn--;
+        board->depth--;
+
+        scores[i] = value;
+
+
+        if(value > score)
+            score = value;
+        if(score > alpha)
+            alpha = score;
+        //prune
+        if(score >= beta){
+            states_pruned++;
+            break;
+        }
+    }
+
+    // erase();
+    // printBoard(board);
+    // move(12, 0);
+
+    // printw("%d: \n", depth);
+    // for(int j=0; moves[capt][j][0] != -1; j++){
+    //     printw("%d %d %d %d (%d)\n", moves[capt][j][0], moves[capt][j][1], moves[capt][j][2], moves[capt][j][3], scores[j]);
+    // }
+
+    //reorder root moves
+    int max;
+    value_t max_val;
+    uint8_t tmp_move[4];
+    for(int j=0; j<i; j++){
+        max_val = -INF;
+        for(int h=j; h<i; h++){
+            if(scores[h] > max_val){
+                max = h;
+                max_val = scores[h];
+                // printw("%d: %d %d\n",j, max, max_val);
+                // refresh();
+            }
+        }
+
+        scores[max] = scores[j];
+
+        memcpy(tmp_move, moves[capt][j], 4);
+        memcpy(moves[capt][j], moves[capt][max], 4);
+        memcpy(moves[capt][max], tmp_move, 4);
+    }
+
+    // printw("%d: \n", depth);
+    // for(int j=0; moves[capt][j][0] != -1; j++){
+    //     printw("%d %d %d %d (%d)\n", moves[capt][j][0], moves[capt][j][1], moves[capt][j][2], moves[capt][j][3], scores[j]);
+    // }
+    // refresh();
+    // getch();
+
+
+    return score;
+}
+
 
 value_t evaluate(board_t *board){
     int count = 0;
     
-    return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->turn * 10) * -1;
+    return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->depth * 10) * -1;
 }
 
 
