@@ -40,7 +40,7 @@ board_t *initializeBoard();
 
 
 //--GENERAL--//
-typedef int16_t value_t;
+typedef int32_t value_t;
 
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 void getMoves(board_t *board, int player, move_t moves);
@@ -196,7 +196,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (%lu in TT) (in %ld seconds), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, board->hash, collision);
+            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -273,7 +273,7 @@ int main(){
 
 
 
-            for(int i=1; i<=12; i++){
+            for(int i=1; i<=8; i++){
                 res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
             }
 
@@ -850,10 +850,51 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 
+value_t pos_value[2][9] = {{0, 5, 10, 15, 25, 50, 75, 100, 100},
+                           {100, 100, 75, 50, 25, 15, 10, 5, 0}};
+
 value_t evaluate(board_t *board){
-    int count = 0;
-    
-    return ((board->piece_list_size[(board->turn + 1) % 2] - board->piece_list_size[board->turn % 2])*1000 - board->depth * 10) * -1;
+    value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
+        // erase();
+        // printBoard(board);
+        // printw("score: %d %d", score, board->turn);
+        // refresh();
+        // getch();
+
+    int player = board->turn % 2;
+
+    //black
+    if(player){
+        for(int i=0; i<board->piece_list_size[1]; i++){
+            score += pos_value[1][board->piece_list[1][i][1]];
+        }
+        for(int i=0; i<board->piece_list_size[0]; i++){
+            score -= pos_value[0][board->piece_list[0][i][1]];
+        }
+    }
+    //white
+    else{
+        for(int i=0; i<board->piece_list_size[1]; i++){
+            score -= pos_value[1][board->piece_list[1][i][1]];
+        }
+        for(int i=0; i<board->piece_list_size[0]; i++){
+            score += pos_value[0][board->piece_list[0][i][1]];
+        }
+    }
+
+    // score -= board->depth * 10;
+
+    // if(score == 32000 || score == -32000){
+        // erase();
+        // printBoard(board);
+        // printw("score: %d", score);
+        // refresh();
+        // getch();
+    // }
+
+    // score -= board->depth*10;
+
+    return score;    
 }
 
 
