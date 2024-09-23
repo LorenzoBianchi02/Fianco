@@ -1,14 +1,9 @@
 ### PRIORITY# ##
-- umpire should check for stalemate
-- why do I need to save best move in TT
+- use best move TT when not excact flag
 
 - consider position in eval
 
 - handle 3 move repition
-
-- handle stalemate in separate function (now it isn't handled, commented in checkWin)
-
-- create a move_t
 
 - turn to player define
 

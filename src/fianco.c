@@ -52,6 +52,7 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 //--TRANSPOSITION TABLE--//
 //using 64 bits for hash, 24 (atm) for primary key
 #define KEY(val) (uint32_t)((val) & 0xFFFFFF)
+#define KEY_HIGH(val) (uint32_t)((val) >> 32)
 #define TT_SIZE 16777216
 
 #define NOT_PRESENT 0
@@ -65,7 +66,7 @@ typedef struct transposition_table_t{
     uint8_t moves[4];
     uint8_t depth;
 
-    uint64_t key;
+    uint32_t key;
 
 } transposition_table_t;
 
@@ -78,7 +79,7 @@ void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8
 
 
 //--AI--//
-#define INF 32500 //fits into an int16_t
+#define INF 32000 //fits into an int16_t
 
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
 value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves);
@@ -101,6 +102,7 @@ int debug;
 uint64_t states_visited;
 uint64_t states_pruned;
 uint64_t TT_found; 
+uint64_t collision;
 
 int main(){
     mvprintw(0, 0, "test\n");
@@ -194,7 +196,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (%lu in TT) (in %ld seconds), hash: %ld", states_visited, states_pruned, TT_found, start, board->hash);
+            printw("states visited %lu, states pruned %lu (%lu in TT) (in %ld seconds), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, board->hash, collision);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -260,6 +262,7 @@ int main(){
             states_visited = 0;
             states_pruned = 0;
             TT_found = 0;
+            collision = 0;
 
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
@@ -300,6 +303,8 @@ int main(){
         refresh();
     }
 
+
+    //TEST:
     erase();
     printBoard(board);
     move(11, 0);
@@ -852,8 +857,8 @@ value_t evaluate(board_t *board){
 }
 
 
-//Return 1 if current player is winning, 2 for the opponent (0 for none).
-//Stalemate does not get checked here for efficiency reasons
+//Return 1 if current player is winning, 2 for the opponent, 3 for stalemate (0 for none).
+//TODO: Stalemate does not get checked
 int checkWin(board_t *board){
     
     //REWRITE:
@@ -915,8 +920,12 @@ uint64_t getHash(board_t *board){
 //Retruns 1 if key is present in table
 int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
     uint32_t low_key = KEY(key);
-    if(table[low_key].type && table[low_key].key == key)
-        return TRUE;
+    if(table[low_key].type){
+        if(table[low_key].key == KEY_HIGH(key)){
+            return TRUE;
+        }
+        collision++;
+    }
 
     return FALSE;
 }
@@ -937,8 +946,7 @@ void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, 
         
         table[key_small].depth = depth;
 
-        table[key_small].key = key;
-        
+        table[key_small].key = KEY_HIGH(key);
     }
 }
 
