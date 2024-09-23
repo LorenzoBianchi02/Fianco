@@ -34,5 +34,8 @@
         }
         
 
-    ]
+    ],
+    "files.associations": {
+        "algorithm": "c"
+    }
 }
