@@ -63,10 +63,16 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = -1;
+    int server = 1, sock;
     int flag;
     clock_t start, end;
     int res;
+
+    if(server > 0){
+        sock = connect_server();
+        getch();
+    }
 
 
     int tmp = lookupTT(transpos_table, board->hash);    //FIXME: why am I doing this?
@@ -170,6 +176,16 @@ int main(){
             mvchgat(8 - fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy)%2)+1, NULL);
         }
 
+
+        //-----SERVER--------//
+        else if(board->turn % 2 + 1 == server){
+            int init_board[9][9];
+            recBoard(sock, init_board);
+            setBoard(init_board, board);
+
+            board->turn++;
+        }
+
         //------DESTROYER-----//
         else{
             // human = human % 2 + 1; //uncomment to only play against yourself
@@ -186,9 +202,16 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-
-
-            for(int i=1; i<=8; i++){
+            int depth = 8;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
+                depth = 9;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
+                depth = 10;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
+                depth = 12;
+            
+            
+            for(int i=1; i<=depth; i++){
                 res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
             }
 
@@ -203,7 +226,6 @@ int main(){
 
             // human = human % 2 + 1;
         }
-
 
         //valid move
         if(flag && movePiece(board, fromx, fromy, tox, toy)){
