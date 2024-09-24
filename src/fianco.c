@@ -209,9 +209,11 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-            int depth = 8;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
+            int depth = 9;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
                 depth = 10;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
+                depth = 11;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
                 depth = 13;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
@@ -221,7 +223,7 @@ int main(){
             
             
             for(int i=1; i<=depth; i++){
-                res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
+                res = negaMarxRoot(board, transpos_table, i, -3000, 3000, moves);
             }
 
             end = clock();
@@ -757,15 +759,6 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         }
     }
 
-    // erase();
-    // printBoard(board);
-    // move(12, 0);
-
-    // printw("%d: \n", depth);
-    // for(int j=0; moves[capt][j][0] != -1; j++){
-    //     printw("%d %d %d %d (%d)\n", moves[capt][j][0], moves[capt][j][1], moves[capt][j][2], moves[capt][j][3], scores[j]);
-    // }
-
     //reorder root moves
     int max;
     value_t max_val;
@@ -788,20 +781,13 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         memcpy(moves[capt][max], tmp_move, 4);
     }
 
-    // printw("%d: \n", depth);
-    // for(int j=0; moves[capt][j][0] != -1; j++){
-    //     printw("%d %d %d %d (%d)\n", moves[capt][j][0], moves[capt][j][1], moves[capt][j][2], moves[capt][j][3], scores[j]);
-    // }
-    // refresh();
-    // getch();
-
 
     return score;
 }
 
 
-value_t pos_value[2][9] = {{0, 5, 10, 15, 25, 50, 75, 100, 100},
-                           {100, 100, 75, 50, 25, 15, 10, 5, 0}};
+value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 50, 100, 100, 200},
+                           {200, 100, 100, 50, 50, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
@@ -827,7 +813,7 @@ value_t evaluate(board_t *board){
         }
     }
 
-    score -= board->depth * 10;
+    // score -= board->depth * 10;
 
 
     return score;    

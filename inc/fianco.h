@@ -43,7 +43,7 @@ board_t *initializeBoard();
 
 
 //--GENERAL--//
-typedef int32_t value_t;
+typedef int16_t value_t;
 
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 void getMoves(board_t *board, int player, move_t moves);
@@ -53,10 +53,10 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
 
 //--TRANSPOSITION TABLE--//
-//using 64 bits for hash, 24 (atm) for primary key
-#define KEY(val) (uint32_t)((val) & 0xFFFFFF)
+//using 64 bits for hash, 28 (atm) for primary key //TODO: use 30 bits with smaller struct
+#define KEY(val) (uint32_t)((val) & 0xFFFFFFF)
 #define KEY_HIGH(val) (uint32_t)((val) >> 32)
-#define TT_SIZE 16777216
+#define TT_SIZE 268435456
 
 #define NOT_PRESENT 0
 #define EXACT 1
@@ -66,7 +66,7 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 typedef struct transposition_table_t{
     value_t value;
     uint8_t type;
-    uint8_t moves[4];
+    uint8_t moves[4];   //FIXME: this fits in 2 bytes instead of 4
     uint8_t depth;
 
     uint32_t key;

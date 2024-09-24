@@ -1,20 +1,13 @@
 ### PRIORITY# ##
 - use best move TT when not excact flag
 
-- consider position in eval
-
 - handle 3 move repition
-
-- turn to player define
 
 - checking ai time
 
 - confirm ai move
 
 - define for board->turn % 2 + 1
-
-- no forced captures in TT
-- bigger TT
 
 - windowing
 
