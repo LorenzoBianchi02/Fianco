@@ -54,7 +54,7 @@ int connect_server(){
 }
 
 void sendBoard(int sock, board_t *board){
-    char buffer[183];
+    char buffer[200];
     int count = 1;
     buffer[0] = '[';
 
@@ -62,16 +62,19 @@ void sendBoard(int sock, board_t *board){
         buffer[count] = '[';
         count++;
         for(int j=0; j<9; j++){
-            buffer[count] = PLAYER(i, j);
+            buffer[count] = PLAYER(j, i) + '0';
             buffer[count + 1] = ',';
             count += 2;
         }
+        count--;
         buffer[count] = ']';
         buffer[count+1] = ',';
         count+=2;
     }
 
     count--;
+    buffer[count] = ']';
+    count++;
     buffer[count] = '\n';
 
     send(sock, buffer, sizeof(buffer), 0);
@@ -82,19 +85,23 @@ int recBoard(int sock, int init_board[9][9]){
 
 
     int valRead = read(sock, buffer, BUFFER_SIZE);
+    // erase();
+    // mvprintw(0, 0, "%s", buffer);
+    // refresh();
+    // getch();
     if(valRead){
 
         char *board_state = buffer + 10;
-        int count=0;
+        int count=1;
 
         for(int i=0; i<9; i++){
             // buffer[count] = "[";
             count++;
             for(int j=0; j<9; j++){
-                init_board[i][j] = board_state[count];
+                init_board[i][j] = board_state[count] - '0';
                 count += 2;
             }
-            count+=2;
+            count+=1;
         }
 
         return 1;
@@ -113,7 +120,7 @@ void setBoard(int init_board[9][9], board_t *board){
 
     for(int i=0; i<9; i++){
         for(int j=0; j<9; j++){
-                player = init_board[i][j];
+                player = init_board[j][i];
                 //if piece add to list
                 if(player > 0){
                     list_size = board->piece_list_size[player-1];

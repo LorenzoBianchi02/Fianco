@@ -63,15 +63,14 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = -1;
-    int server = 1, sock;
+    int human = 2;
+    int server = 0, sock;
     int flag;
     clock_t start, end;
     int res;
 
     if(server > 0){
         sock = connect_server();
-        getch();
     }
 
 
@@ -83,7 +82,7 @@ int main(){
     getMoves(board, 1, moves);
 
 
-    while(!checkWin(board)){
+    while(1){
         start_turn:
 
         erase(); //END: remove
@@ -114,10 +113,18 @@ int main(){
         printMoves(moves);
         flag = 1;
 
+        move(6, 20);
+        printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
+        
+        if(board->turn)
+                mvprintw(7, 20, ", ai res: %d\n", res);
+
+        refresh();
+
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
+            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -203,12 +210,14 @@ int main(){
             //TODO: aspiration search (windows)
 
             int depth = 8;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
-                depth = 9;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
                 depth = 10;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
+                depth = 13;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
+                depth = 16;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                depth = 12;
+                depth = 20;
             
             
             for(int i=1; i<=depth; i++){
@@ -235,6 +244,10 @@ int main(){
             move_history[board->turn][3] = toy;
             
             board->turn++;
+
+            if(server > 0){
+                sendBoard(sock, board);
+            }
         }
 
         refresh();
@@ -792,11 +805,6 @@ value_t pos_value[2][9] = {{0, 5, 10, 15, 25, 50, 75, 100, 100},
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
-        // erase();
-        // printBoard(board);
-        // printw("score: %d %d", score, board->turn);
-        // refresh();
-        // getch();
 
     int player = board->turn % 2;
 
@@ -819,17 +827,8 @@ value_t evaluate(board_t *board){
         }
     }
 
-    // score -= board->depth * 10;
+    score -= board->depth * 10;
 
-    // if(score == 32000 || score == -32000){
-        // erase();
-        // printBoard(board);
-        // printw("score: %d", score);
-        // refresh();
-        // getch();
-    // }
-
-    // score -= board->depth*10;
 
     return score;    
 }
