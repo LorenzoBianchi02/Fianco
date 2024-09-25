@@ -36,6 +36,8 @@ typedef struct board_t{
     uint64_t hash;
 
     uint8_t depth;
+
+    uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 }board_t;
 
 board_t *initializeBoard();

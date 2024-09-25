@@ -10,7 +10,6 @@
 
 
 int debug;
-int redo;
 
 uint64_t hashTable[9][9][2]; //global rand values
 
@@ -19,11 +18,9 @@ uint64_t states_visited;
 uint64_t states_pruned;
 uint64_t TT_prunes; 
 uint64_t collision;
+int redo;
 
 int main(){
-    mvprintw(0, 0, "test\n");
-    refresh();
-    getch();
     //---------NCURSES---------//
     setlocale(LC_ALL, "");
 
@@ -60,11 +57,10 @@ int main(){
 
     board_t *board = initializeBoard();
     uint8_t fromx, fromy, tox, toy;
-    uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 0;
+    int human = 2;
     int server = 0, sock;
     int flag;
     clock_t start, end;
@@ -86,7 +82,7 @@ int main(){
     while(!checkWin(board)){
         start_turn:
 
-        erase(); //END: remove
+        // erase(); //END: remove
         printBoard(board);
 
         if(board->turn && board->turn % 2 + 1 == human){
@@ -140,11 +136,11 @@ int main(){
 
                 //---UNDO---//
                 if(board->turn && fromy == 3 && fromx >= 10 && fromx <= 12){
-                    undoMove(board, move_history[board->turn-1][0], move_history[board->turn-1][1], move_history[board->turn-1][2], move_history[board->turn-1][3]);
-                    board->turn--;
+                    undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
+                    
                     if(board->turn){
-                        undoMove(board, move_history[board->turn-1][0], move_history[board->turn-1][1], move_history[board->turn-1][2], move_history[board->turn-1][3]);
-                        board->turn--;
+                        undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
+                        
                     }
 
                     goto start_turn; //this is my code, and I shall do what I want!!!
@@ -197,6 +193,8 @@ int main(){
         //------DESTROYER-----//
         else{
             // human = human % 2 + 1; //uncomment to only play against yourself
+            
+            start = clock();
 
             states_visited = 0;
             states_pruned = 0;
@@ -204,10 +202,10 @@ int main(){
             collision = 0;
             redo = 0;
 
+
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
-            start = clock();
 
             //TODO: aspiration search (windows)
 
@@ -230,30 +228,26 @@ int main(){
             
             
             for(int i=1; i<=depth; i++){
+                board->depth = 0;
                 res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
             }
 
-            end = clock();
-
-            start = ((double) (end - start)) / CLOCKS_PER_SEC;
 
             fromx = moves[capt][0][0];
             fromy = moves[capt][0][1];
             tox = moves[capt][0][2];
             toy = moves[capt][0][3];
 
+            end = clock();
+
+            start = ((double) (end - start)) / CLOCKS_PER_SEC;
+
             // human = human % 2 + 1;
         }
 
         //valid move
+        //flag indicates if it captures when it has to
         if(flag && movePiece(board, fromx, fromy, tox, toy)){
-            move_history[board->turn][0] = fromx;
-            move_history[board->turn][1] = fromy;
-            move_history[board->turn][2] = tox;
-            move_history[board->turn][3] = toy;
-            
-            board->turn++;
-
             if(server > 0){
                 sendBoard(sock, board);
             }
@@ -493,9 +487,14 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 //The hash also gets automaticly updated.
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
 int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
+    board->turn++;
+    board->depth--;
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
-    if(!move)
+    if(!move){
+        board->turn--;
+        board->depth--;
         return FALSE;
+    }
 
     int list_from = PLAYER(fromx, fromy) - 1;
     
@@ -514,8 +513,6 @@ int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
         //remove starting pos
         board->cell[fromx][fromy][0] = 0;
-
-
 
     }else if(move == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
@@ -546,6 +543,11 @@ int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
     //hash to
     board->hash ^= hashTable[tox][toy][PLAYER(tox, toy) - 1];
+
+    board->move_history[board->turn-1][0] = fromx;
+    board->move_history[board->turn-1][1] = fromy;
+    board->move_history[board->turn-1][2] = tox;
+    board->move_history[board->turn-1][3] = toy;
 
     return move;
 }
@@ -620,6 +622,9 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
     //hash to
     board->hash ^= hashTable[tox][toy][PLAYER(tox, toy) - 1];
+
+    board->turn--;
+    board->depth--;
 }
 
 
@@ -673,14 +678,10 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
         // first try the TT move
         movePiece(board, move[0], move[1], move[2], move[3]);
-        board->turn++;  //TODO: put this in movePiece
-        board->depth++;
 
         score = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
         undoMove(board, move[0], move[1], move[2], move[3]);
-        board->turn--;
-        board->depth--;
 
         if(score >= beta){
             best[0] = transpos[key].moves[0];
@@ -724,15 +725,10 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             continue;
 
             movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-            board->turn++;
-            board->depth++;
 
             value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
             undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-            board->turn--;
-            board->depth--;
-
 
             if(value > score){
                 score = value;
@@ -779,8 +775,6 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 
     for(i=0; moves[capt][i][0] != -1; i++){
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        board->turn++;
-        board->depth++;
 
         if(!i){
             value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);    
@@ -794,9 +788,6 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         }
 
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        board->turn--;
-        board->depth--;
-
         scores[i] = value;
 
 
