@@ -209,7 +209,7 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-            int depth = 9;
+            int depth = 8;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
                 depth = 10;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
@@ -654,7 +654,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     if(terminal){
         if(terminal == 1)
-            eval = 30000 - board->depth*10;      //REWRITE: should depend on board->depth, only on how far it has searched so far
+            eval = 30000 - board->depth*10;
         else if(terminal == 2)
             eval = -30000 + board->depth*10;
         else
@@ -786,8 +786,8 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 
-value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 50, 100, 100, 200},
-                           {200, 100, 100, 50, 50, 50, 0, 0, 0}};
+value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 50, 100, 200, 200},
+                           {200, 200, 100, 50, 50, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
