@@ -1,7 +1,7 @@
 ### PRIORITY# ##
 - more TT elements
 
-- handle 3 move repition
+- handle 3 move repition (I could just check in the root, and save the real last moves played)
 
 - checking ai time
 
@@ -26,8 +26,6 @@
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient
 
 - pondering
-
-- 32bits hash key? (calculate the risk of collision)
 
 - better transposition replacement scheme
 

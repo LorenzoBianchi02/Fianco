@@ -764,7 +764,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             if(score > alpha)
                 alpha = score;
             //prune
-            if(score >= beta){  //TEST: alpha >= beta or score >= beta ?
+            if(score >= beta){
                 states_pruned++;
 
                 //update killer moves
@@ -855,7 +855,7 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 
-value_t pos_value[2][9] = {{0, 0, 0, 50, 100, 150, 150, 200, 200},
+value_t pos_value[2][9] = {{0, 0, 0, 50, 100, 150, 150, 200, 200},  //TEST: FIXME:
                            {200, 200, 150, 150, 100, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
