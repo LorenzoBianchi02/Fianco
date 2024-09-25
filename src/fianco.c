@@ -16,7 +16,7 @@ uint64_t hashTable[9][9][2]; //global rand values
 //--STATS--//
 uint64_t states_visited;
 uint64_t states_pruned;
-uint64_t TT_found; 
+uint64_t TT_prunes; 
 uint64_t collision;
 
 int main(){
@@ -82,7 +82,7 @@ int main(){
     getMoves(board, 1, moves);
 
 
-    while(1){
+    while(!checkWin(board)){
         start_turn:
 
         erase(); //END: remove
@@ -114,7 +114,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
+        printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision);
         
         if(board->turn)
                 mvprintw(7, 20, ", ai res: %d\n", res);
@@ -124,7 +124,7 @@ int main(){
         //-----HUMAN-----//
         move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_found, start, (float)states_visited/start, board->hash, collision);
+            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision);
             if(board->turn)
                 printw(", ai res: %d\n", res);
             refresh();
@@ -199,7 +199,7 @@ int main(){
 
             states_visited = 0;
             states_pruned = 0;
-            TT_found = 0;
+            TT_prunes = 0;
             collision = 0;
 
             //clear TT
@@ -209,7 +209,7 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-            int depth = 8;
+            int depth = 9;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
                 depth = 10;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
@@ -292,7 +292,7 @@ board_t *initializeBoard(){
     // int init_board[9][9] = 
     // {
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {0, 2, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
     //     {0, 0, 1, 0, 2, 0, 0, 0, 0},
     //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -618,11 +618,15 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
 //main function for AI
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
+    states_visited++;
+
     int old_alpha = alpha;
+    uint32_t key = KEY(board->hash);;
+
+    int height = lookupTT(transpos, board->hash);
 
     //REWRITE: can I do transposition_table_t tmp = transpos[KEY(board->hash)]???
-    if(lookupTT(transpos, board->hash) && transpos[KEY(board->hash)].depth >= depth){
-        uint32_t key = KEY(board->hash);
+    if(height >= depth){
         value_t value = transpos[key].value;
         int type = transpos[key].type;
 
@@ -636,9 +640,11 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
                 beta = value;
         }
 
+        //forward pruning
         if(alpha >= beta){
-            states_pruned++; //NOTE: is this a pruning??
-            TT_found++;
+            states_pruned++;
+            TT_prunes++;
+
             memcpy(best, transpos[key].moves, 4);
             return transpos[key].value;
         }
@@ -646,9 +652,39 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
 
     value_t eval;
-    states_visited++;
 
 
+
+    if(!depth)
+        return evaluate(board);
+
+
+    value_t score = -INF, value;
+
+    if(height >= 0){
+        uint8_t move[4] = {transpos[key].moves[0], transpos[key].moves[1], transpos[key].moves[2], transpos[key].moves[3]};
+
+        // first try the TT move
+        movePiece(board, move[0], move[1], move[2], move[3]);
+        board->turn++;  //TODO: put this in movePiece
+        board->depth++;
+
+        score = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+
+        undoMove(board, move[0], move[1], move[2], move[3]);
+        board->turn--;
+        board->depth--;
+
+        if(score >= beta){
+            best[0] = transpos[key].moves[0];
+            best[1] = transpos[key].moves[1];
+            best[2] = transpos[key].moves[2];
+            best[3] = transpos[key].moves[3];
+            goto done;
+        }
+    }
+
+    //check terminal position
     //REWRITE:
     int terminal = checkWin(board);
 
@@ -659,12 +695,9 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             eval = -30000 + board->depth*10;
         else
             eval = 0;
-    }else
-        eval = evaluate(board);
 
-    if(terminal || !depth)
         return eval;
-
+    }
     
     move_t moves;
     getMoves(board, board->turn%2+1, moves);
@@ -676,11 +709,12 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
 
     int move = 0;
-    value_t score = -INF, value;
 
     int capt = CAN_CAPT(moves);
 
     for(int i=0; moves[capt][i][0] != -1; i++){
+        // if(height >= 0 && transpos[])
+
         movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn++;
         board->depth++;
@@ -705,17 +739,24 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         }
     }
 
-
-    int bound = EXACT;
-    if(score <= old_alpha) bound = UPPER_BOUND;
-    else if(score >= beta) bound = LOWER_BOUND;
-
     best[0] = moves[capt][move][0];
     best[1] = moves[capt][move][1];
     best[2] = moves[capt][move][2];
     best[3] = moves[capt][move][3];
 
-    storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
+    done:
+    int bound = EXACT;
+    if(score <= old_alpha) bound = UPPER_BOUND;
+    else if(score >= beta) bound = LOWER_BOUND;
+
+    if(height <= depth){
+        // erase();
+        // printBoard(board);
+        // mvprintw(15, 0, "storing move: %d %d %d %d type: %d depth: %d val: %d\n", best[0], best[1], best[2], best[3], bound, depth, score);
+        // refresh();
+        // getch();
+        storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
+    }
 
     // printw("best %d: %d %d %d %d\n", depth, best[0], best[1], best[2], best[3]);
     // refresh();
@@ -885,12 +926,12 @@ int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
     uint32_t low_key = KEY(key);
     if(table[low_key].type){
         if(table[low_key].key == KEY_HIGH(key)){
-            return TRUE;
+            return table[low_key].depth;
         }
         collision++;
     }
 
-    return FALSE;
+    return -1;
 }
 
 //NOTE: currently using DEEP replacement scheme
@@ -902,6 +943,7 @@ void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, 
     if(!lookupTT(table, key) || table[key_small].depth < depth){
         table[key_small].value = value;
         table[key_small].type = type;
+
         table[key_small].moves[0] = fromx;
         table[key_small].moves[1] = fromy;
         table[key_small].moves[2] = tox;
