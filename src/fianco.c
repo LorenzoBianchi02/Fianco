@@ -10,6 +10,7 @@
 
 
 int debug;
+int redo;
 
 uint64_t hashTable[9][9][2]; //global rand values
 
@@ -114,7 +115,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision);
+        printw("states visited %lu, states pruned %lu, %lu TT cutoffs, %ld seconds (%.0f n/s), hash: %lu, collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, ", ai res: %d\n", res);
@@ -201,6 +202,7 @@ int main(){
             states_pruned = 0;
             TT_prunes = 0;
             collision = 0;
+            redo = 0;
 
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
@@ -209,21 +211,26 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-            int depth = 10;
+            int depth = 8;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
                 depth = 10;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 14)
                 depth = 11;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
                 depth = 13;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
-                depth = 16;
+                depth = 17;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                depth = 20;
+                depth = 21;
+
+
+            
+            //TODO: principal variation
+            //      if the opponent followed the pv, the I should make the first move the one that was present in my pv
             
             
             for(int i=1; i<=depth; i++){
-                res = negaMarxRoot(board, transpos_table, i, -3000, 3000, moves);
+                res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
             }
 
             end = clock();
@@ -712,6 +719,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int capt = CAN_CAPT(moves);
 
     for(int i=0; moves[capt][i][0] != -1; i++){
+        //TT move has already been tried
         if(height >= 0 && transpos[key].moves[0] == moves[capt][i][0] && transpos[key].moves[1] == moves[capt][i][1] && transpos[key].moves[2] == moves[capt][i][2] && transpos[key].moves[3] == moves[capt][i][3])
             continue;
 
@@ -765,7 +773,6 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
     int i;
     value_t score = -INF, value;
     uint8_t best[4]; //FIXME: not needed right?
-
     value_t scores[50];
 
     int capt = CAN_CAPT(moves);
@@ -775,7 +782,16 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         board->turn++;
         board->depth++;
 
-        value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+        if(!i){
+            value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);    
+        }else{
+            value = -negaMarx(board, transpos, depth-1, -alpha - 1, -alpha, best);
+
+            if(alpha < value && value < beta){
+                value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+                redo+=depth;
+            }
+        }
 
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         board->turn--;
@@ -822,8 +838,8 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 
-value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 50, 100, 200, 200},
-                           {200, 200, 100, 50, 50, 50, 0, 0, 0}};
+value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 100, 100, 200, 200},
+                           {200, 200, 100, 100, 50, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
