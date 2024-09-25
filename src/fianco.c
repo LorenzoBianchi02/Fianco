@@ -112,7 +112,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start, (float)states_visited/start, collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start, (float)((float)states_visited/start)/CLOCKS_PER_SEC, collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, "EVALUATION: %d", res);
@@ -257,7 +257,7 @@ int main(){
 
             end = clock();
 
-            start = ((double) (end - start)) / CLOCKS_PER_SEC;
+            start = ((double) (end - start));
 
             // human = human % 2 + 1;
         }
