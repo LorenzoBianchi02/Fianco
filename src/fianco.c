@@ -119,6 +119,11 @@ int main(){
 
         refresh();
 
+
+        //check for stalemate
+        if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
+            break;
+
         //-----HUMAN-----//
         if(board->turn % 2 + 1 == human){
             //first click
@@ -265,6 +270,8 @@ int main(){
     printBoard(board);
     move(11, 0);
     int winner = checkWin(board);
+    if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
+        winner = (board->turn + 1) % 2 + 1;
     printw("   PLAYER %d won", winner);
     printw("\n\n   (Press any key to leave)");
     refresh();
@@ -280,31 +287,31 @@ board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
     // setting up the board
-    int init_board[9][9] = 
-    {
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2}
-    };
-
     // int init_board[9][9] = 
     // {
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 2, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 1, 0, 2, 0, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 1, 0, 2, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {0, 0, 0, 0, 0, 0, 0, 0, 0}
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2}
     // };
+
+    int init_board[9][9] = 
+    {
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 1, 0, 0, 0, 0},
+        {0, 0, 1, 0, 2, 0, 0, 0, 0},
+        {0, 0, 0, 0, 1, 0, 0, 0, 0},
+        {0, 0, 0, 1, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0}
+    };
 
     board->piece_list_size[0] = 0;
     board->piece_list_size[1] = 0;
@@ -889,8 +896,8 @@ value_t evaluate(board_t *board){
 }
 
 
-//Return 1 if current player is winning, 2 for the opponent, 3 for stalemate (0 for none).
-//TODO: Stalemate does not get checked
+//Return 1 if current player is winning, 2 for the opponent (0 for none).
+//NOTE: Stalemate does not get checked
 int checkWin(board_t *board){
     
     //REWRITE:
