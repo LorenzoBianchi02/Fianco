@@ -1,5 +1,5 @@
 ### PRIORITY# ##
-- use best move TT when not excact flag
+- more TT elements
 
 - handle 3 move repition
 

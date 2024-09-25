@@ -680,6 +680,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             best[1] = transpos[key].moves[1];
             best[2] = transpos[key].moves[2];
             best[3] = transpos[key].moves[3];
+
             goto done;
         }
     }
@@ -707,9 +708,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         return -30000 + board->depth*10;
 
 
-
     int move = 0;
-
     int capt = CAN_CAPT(moves);
 
     for(int i=0; moves[capt][i][0] != -1; i++){
@@ -720,7 +719,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             board->turn++;
             board->depth++;
 
-            value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+            value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
             undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
             board->turn--;
@@ -734,7 +733,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             if(score > alpha)
                 alpha = score;
             //prune
-            if(score >= beta){
+            if(score >= beta){  //TEST: alpha >= beta or score >= beta ?
                 states_pruned++;
                 break;
             }
