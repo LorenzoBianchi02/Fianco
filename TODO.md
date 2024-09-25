@@ -11,6 +11,8 @@
 
 - windowing
 
+- evaluation: punnish stack doubling
+
 
 - end game DB
 - opening book

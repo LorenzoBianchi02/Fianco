@@ -35,9 +35,11 @@ typedef struct board_t{
 
     uint64_t hash;
 
-    uint8_t depth;
+    uint8_t depth;  //do not be fooled (again), this is how deep you are in the tree
 
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
+
+    uint8_t killer_move[100][2][4]; //2 killer moves
 }board_t;
 
 board_t *initializeBoard();

@@ -17,6 +17,7 @@ uint64_t hashTable[9][9][2]; //global rand values
 uint64_t states_visited;
 uint64_t states_pruned;
 uint64_t TT_prunes; 
+uint64_t killer_prunes;
 uint64_t collision;
 int redo;
 
@@ -82,7 +83,7 @@ int main(){
     while(!checkWin(board)){
         start_turn:
 
-        // erase(); //END: remove
+        erase(); //END: remove 
         printBoard(board);
 
         if(board->turn && board->turn % 2 + 1 == human){
@@ -111,7 +112,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited %lu, states pruned %lu, %lu TT cutoffs, %ld seconds (%.0f n/s), hash: %lu, collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start, (float)states_visited/start, collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, ", ai res: %d\n", res);
@@ -119,13 +120,7 @@ int main(){
         refresh();
 
         //-----HUMAN-----//
-        move(6, 20);
         if(board->turn % 2 + 1 == human){
-            printw("states visited %lu, states pruned %lu (%lu in TT) in %ld seconds (%.0f n/s), hash: %lu, collisions: %lu", states_visited, states_pruned, TT_prunes, start, (float)states_visited/start, board->hash, collision);
-            if(board->turn)
-                printw(", ai res: %d\n", res);
-            refresh();
-
             //first click
             do{
                 getch();
@@ -196,30 +191,38 @@ int main(){
             
             start = clock();
 
+
+            //reset stuff
             states_visited = 0;
             states_pruned = 0;
             TT_prunes = 0;
             collision = 0;
             redo = 0;
+            killer_prunes = 0;
+
+            for(int i=0; i<100; i++){
+                board->killer_move[i][0][0] = -1;
+                board->killer_move[i][1][0] = -1;
+            }
 
 
             //clear TT
             memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
 
-            //TODO: aspiration search (windows)
 
-            int depth = 8;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
+
+            int depth = 9;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 21)
                 depth = 10;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 14)
-                depth = 11;
+            if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
+                depth = 12;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
-                depth = 13;
+                depth = 15;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
-                depth = 17;
+                depth = 19;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                depth = 21;
+                depth = 25;
 
 
             
@@ -488,7 +491,7 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
 int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
     board->turn++;
-    board->depth--;
+    board->depth++;
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move){
         board->turn--;
@@ -654,7 +657,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
         //forward pruning
         if(alpha >= beta){
-            states_pruned++;
             TT_prunes++;
 
             memcpy(best, transpos[key].moves, 4);
@@ -684,10 +686,8 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         undoMove(board, move[0], move[1], move[2], move[3]);
 
         if(score >= beta){
-            best[0] = transpos[key].moves[0];
-            best[1] = transpos[key].moves[1];
-            best[2] = transpos[key].moves[2];
-            best[3] = transpos[key].moves[3];
+            memcpy(best, transpos[key].moves, 4);
+            TT_prunes++;
 
             goto done;
         }
@@ -719,6 +719,33 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int move = 0;
     int capt = CAN_CAPT(moves);
 
+
+    //KILLER MOVE (only when you don't have to capture) //TEST: maybe it is worth checking always
+    if(!capt){
+        for(int i=0; i<2; i++){
+            if(board->killer_move[board->depth][i][0] < 9){
+                //check for valid move
+                if(movePiece(board, board->killer_move[board->depth][i][0], board->killer_move[board->depth][i][1], board->killer_move[board->depth][i][2], board->killer_move[board->depth][i][3])){
+                    
+                    value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+                    undoMove(board, board->killer_move[board->depth-1][i][0], board->killer_move[board->depth-1][i][1], board->killer_move[board->depth-1][i][2], board->killer_move[board->depth-1][i][3]);
+
+                    if(value > score)
+                        score = value;
+
+                    if(score >= beta){
+                        memcpy(best, board->killer_move[board->depth][i], 4);
+                        killer_prunes++;
+
+                        goto done;
+                    }
+                }
+            }
+        }
+    }
+
+
+
     for(int i=0; moves[capt][i][0] != -1; i++){
         //TT move has already been tried
         if(height >= 0 && transpos[key].moves[0] == moves[capt][i][0] && transpos[key].moves[1] == moves[capt][i][1] && transpos[key].moves[2] == moves[capt][i][2] && transpos[key].moves[3] == moves[capt][i][3])
@@ -739,15 +766,19 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             //prune
             if(score >= beta){  //TEST: alpha >= beta or score >= beta ?
                 states_pruned++;
+
+                //update killer moves
+                memcpy(board->killer_move[board->depth][1], board->killer_move[board->depth][0], 4);
+                memcpy(board->killer_move[board->depth][0], moves[capt][i], 4);
+
                 break;
             }
     }
 
-    best[0] = moves[capt][move][0];
-    best[1] = moves[capt][move][1];
-    best[2] = moves[capt][move][2];
-    best[3] = moves[capt][move][3];
+    memcpy(best, moves[capt][move], 4);
 
+
+    //store in TT
     done:
     int bound = EXACT;
     if(score <= old_alpha) bound = UPPER_BOUND;
@@ -756,9 +787,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     if(height <= depth){
         storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
     }
-
-    // printw("best %d: %d %d %d %d\n", depth, best[0], best[1], best[2], best[3]);
-    // refresh();
 
     return score;
 }
@@ -812,8 +840,6 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
             if(scores[h] > max_val){
                 max = h;
                 max_val = scores[h];
-                // printw("%d: %d %d\n",j, max, max_val);
-                // refresh();
             }
         }
 
@@ -829,8 +855,8 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 
-value_t pos_value[2][9] = {{0, 0, 0, 50, 50, 100, 100, 200, 200},
-                           {200, 200, 100, 100, 50, 50, 0, 0, 0}};
+value_t pos_value[2][9] = {{0, 0, 0, 50, 100, 150, 150, 200, 200},
+                           {200, 200, 150, 150, 100, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
