@@ -15,7 +15,6 @@ int connect_server(){
     struct sockaddr_in serv_addr;
     char buffer[BUFFER_SIZE] = {0};
     char *player_id = "player2\n";  // Player ID to send to the server
-    char *move = "[[1,1,1,1,1,1,1,1,1],[0,1,0,0,0,0,0,1,0],[0,0,1,0,0,0,1,0,0],[0,0,0,1,0,0,0,0,0],[0,0,0,0,0,1,0,0,0],[0,0,0,2,0,2,0,0,0],[0,0,2,0,0,0,2,0,0],[0,2,0,0,0,0,0,2,2],[2,2,2,2,2,2,2,2,0]]\n";     // Example move to send to the server
 
     erase();
     move(0, 0);

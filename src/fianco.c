@@ -63,7 +63,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = 0;
     int server = 0, sock;
     int flag;
     clock_t start, end;
@@ -209,7 +209,7 @@ int main(){
 
             //TODO: aspiration search (windows)
 
-            int depth = 9;
+            int depth = 10;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 20)
                 depth = 10;
             if(board->piece_list_size[0] + board->piece_list_size[1] < 16)
@@ -713,30 +713,31 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int capt = CAN_CAPT(moves);
 
     for(int i=0; moves[capt][i][0] != -1; i++){
-        // if(height >= 0 && transpos[])
+        if(height >= 0 && transpos[key].moves[0] == moves[capt][i][0] && transpos[key].moves[1] == moves[capt][i][1] && transpos[key].moves[2] == moves[capt][i][2] && transpos[key].moves[3] == moves[capt][i][3])
+            continue;
 
-        movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        board->turn++;
-        board->depth++;
+            movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+            board->turn++;
+            board->depth++;
 
-        value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+            value = -1 * negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
-        undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
-        board->turn--;
-        board->depth--;
+            undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+            board->turn--;
+            board->depth--;
 
 
-        if(value > score){
-            score = value;
-            move = i;
-        }
-        if(score > alpha)
-            alpha = score;
-        //prune
-        if(score >= beta){
-            states_pruned++;
-            break;
-        }
+            if(value > score){
+                score = value;
+                move = i;
+            }
+            if(score > alpha)
+                alpha = score;
+            //prune
+            if(score >= beta){
+                states_pruned++;
+                break;
+            }
     }
 
     best[0] = moves[capt][move][0];
@@ -750,11 +751,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     else if(score >= beta) bound = LOWER_BOUND;
 
     if(height <= depth){
-        // erase();
-        // printBoard(board);
-        // mvprintw(15, 0, "storing move: %d %d %d %d type: %d depth: %d val: %d\n", best[0], best[1], best[2], best[3], bound, depth, score);
-        // refresh();
-        // getch();
         storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
     }
 
