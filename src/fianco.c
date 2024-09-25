@@ -61,8 +61,8 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
-    int server = 0, sock;
+    int human = 0;
+    int server = 1, sock;
     int flag;
     clock_t start, end;
     int res;
@@ -115,7 +115,7 @@ int main(){
         printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start, (float)states_visited/start, collision, redo);
         
         if(board->turn)
-                mvprintw(7, 20, ", ai res: %d\n", res);
+                mvprintw(7, 20, "EVALUATION: %d", res);
 
         refresh();
 
@@ -196,55 +196,64 @@ int main(){
             
             start = clock();
 
+            //if you only have one possible move
+            if(moves[1][0][0] != -1 && moves[1][1][0] == -1){
+                fromx = moves[1][0][0];
+                fromy = moves[1][0][1];
+                tox = moves[1][0][2];
+                toy = moves[1][0][3];
+            }else{
+                //reset stuff
+                states_visited = 0;
+                states_pruned = 0;
+                TT_prunes = 0;
+                collision = 0;
+                redo = 0;
+                killer_prunes = 0;
 
-            //reset stuff
-            states_visited = 0;
-            states_pruned = 0;
-            TT_prunes = 0;
-            collision = 0;
-            redo = 0;
-            killer_prunes = 0;
+                for(int i=0; i<100; i++){
+                    board->killer_move[i][0][0] = -1;
+                    board->killer_move[i][1][0] = -1;
+                }
 
-            for(int i=0; i<100; i++){
-                board->killer_move[i][0][0] = -1;
-                board->killer_move[i][1][0] = -1;
+
+                //clear TT
+                memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
+
+
+
+
+                int depth = 10;
+                if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
+                    depth = 12;
+                if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
+                    depth = 14;
+                if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
+                    depth = 23;
+                if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
+                    depth = 29;
+
+                printw(", depth: %d", depth);
+                refresh();
+
+
+                
+                //TODO: principal variation
+                //      if the opponent followed the pv, the I should make the first move the one that was present in my pv
+                
+                
+                for(int i=1; i<=depth; i++){
+                    board->depth = 0;
+                    res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
+                }
+
+
+                fromx = moves[capt][0][0];
+                fromy = moves[capt][0][1];
+                tox = moves[capt][0][2];
+                toy = moves[capt][0][3];
+                
             }
-
-
-            //clear TT
-            memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
-
-
-
-
-            int depth = 9;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 21)
-                depth = 10;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
-                depth = 12;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
-                depth = 15;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
-                depth = 19;
-            if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                depth = 25;
-
-
-            
-            //TODO: principal variation
-            //      if the opponent followed the pv, the I should make the first move the one that was present in my pv
-            
-            
-            for(int i=1; i<=depth; i++){
-                board->depth = 0;
-                res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
-            }
-
-
-            fromx = moves[capt][0][0];
-            fromy = moves[capt][0][1];
-            tox = moves[capt][0][2];
-            toy = moves[capt][0][3];
 
             end = clock();
 
@@ -278,6 +287,9 @@ int main(){
 
     getch();
     endwin();
+
+    free(transpos_table);
+    free(board);
 
     return 0;
 }
@@ -818,7 +830,7 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 
             if(alpha < value && value < beta){
                 value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
-                redo+=depth;
+                redo=depth;
             }
         }
 

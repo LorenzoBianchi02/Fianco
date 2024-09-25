@@ -3,6 +3,8 @@
 
 - handle 3 move repition (I could just check in the root, and save the real last moves played)
 
+- if you only have 1 move do it immidiatly
+
 - checking ai time
 
 - confirm ai move
