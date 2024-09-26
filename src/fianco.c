@@ -61,8 +61,8 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 0;
-    int server = 1, sock;
+    int human = 2;
+    int server = 0, sock;
     int flag;
     clock_t start, end;
     int res;
@@ -223,7 +223,7 @@ int main(){
 
 
 
-                int depth = 10;
+                int depth = 9;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
                     depth = 12;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
