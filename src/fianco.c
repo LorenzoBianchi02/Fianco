@@ -274,6 +274,7 @@ int main(){
     }
 
 
+    //---ENDGAME---//
     //TEST:
     erase();
     printBoard(board);

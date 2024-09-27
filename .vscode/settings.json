@@ -36,6 +36,7 @@
 
     ],
     "files.associations": {
-        "algorithm": "c"
+        "algorithm": "c",
+        "ncurses.h": "c"
     }
 }
