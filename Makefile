@@ -13,6 +13,7 @@ ARGS :=
 # FLAGS := -Werror -Wall
 FLAGS :=
 LIB := -lncursesw
+# LIB := -lncursesw -lpthread
 
 #all: clear build run
 all: clean

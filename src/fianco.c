@@ -89,7 +89,7 @@ int main(){
         if(board->turn && board->turn % 2 + 1 == human){
             mvchgat(8-toy, 2*tox, 2, A_NORMAL, 7, NULL);
         }
-
+ 
         mvprintw(1, 20, "Player's turn:   \n");
         mvchgat(1, 35, 2, A_NORMAL, board->turn%2+5, NULL);
 
