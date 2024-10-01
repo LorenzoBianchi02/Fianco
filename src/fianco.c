@@ -656,8 +656,11 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     states_visited++;
 
     int old_alpha = alpha;
+    value_t eval;
+
     uint32_t key = KEY(board->hash);;
 
+    //TRANSOPITION TABLE
     int height = lookupTT(transpos, board->hash);
 
     //REWRITE: can I do transposition_table_t tmp = transpos[KEY(board->hash)]???
@@ -685,16 +688,14 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     }
 
 
-    value_t eval;
-
-
-
     if(!depth)
         return evaluate(board);
 
 
+
     value_t score = -INF, value;
 
+    //TRANSPOSITION MOVE
     if(height >= 0){
         uint8_t move[4] = {transpos[key].moves[0], transpos[key].moves[1], transpos[key].moves[2], transpos[key].moves[3]};
 
@@ -713,7 +714,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         }
     }
 
-    //check terminal position
+    //TERMINAL POSITION
     //REWRITE:
     int terminal = checkWin(board);
 
@@ -739,7 +740,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int move = 0;
     int capt = CAN_CAPT(moves);
 
-    int one_move = 0;       //TEST:
+    int one_move = 0;
     if(moves[1][0][0] != -1)
         one_move = 1;
 
