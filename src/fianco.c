@@ -223,7 +223,7 @@ int main(){
 
 
 
-                int depth = 11;
+                int depth = 9;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
                     depth = 12;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
@@ -740,7 +740,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int capt = CAN_CAPT(moves);
 
     int one_move = 0;       //TEST:
-    if(moves[1][0][0] != -1 && moves[1][1][0] == -1)
+    if(moves[1][0][0] != -1)
         one_move = 1;
 
 
@@ -875,32 +875,46 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
     return score;
 }
 
+//[0][1]: player y position, [2]: player x position
+value_t pos_value[2][9][9] = {
+    {
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 50, 50, 50, 0, 0, 0},
+     {50, 50, 50, 100, 100, 100, 50, 50, 50},
+     {100, 100, 100, 150, 150, 150, 100, 100, 100},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+    },
+    {
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {100, 100, 100, 150, 150, 150, 100, 100, 100},
+     {50, 50, 50, 100, 100, 100, 50, 50, 50},
+     {0, 0, 0, 50, 50, 50, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    }
+};
 
-value_t pos_value[2][9] = {{0, 0, 0, 50, 100, 150, 150, 200, 200},  //TEST: FIXME:
-                           {200, 200, 150, 150, 100, 50, 0, 0, 0}};
 
 value_t evaluate(board_t *board){
     value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
 
     int player = board->turn % 2;
 
-    //black
-    if(player){
-        for(int i=0; i<board->piece_list_size[1]; i++){
-            score += pos_value[1][board->piece_list[1][i][1]];
-        }
-        for(int i=0; i<board->piece_list_size[0]; i++){
-            score -= pos_value[0][board->piece_list[0][i][1]];
-        }
+    for(int i=0; i<board->piece_list_size[1]; i++){
+        score += pos_value[player][board->piece_list[player][i][1]][board->piece_list[player][i][0]];
     }
-    //white
-    else{
-        for(int i=0; i<board->piece_list_size[1]; i++){
-            score -= pos_value[1][board->piece_list[1][i][1]];
-        }
-        for(int i=0; i<board->piece_list_size[0]; i++){
-            score += pos_value[0][board->piece_list[0][i][1]];
-        }
+
+    player = (player + 1) % 2;
+
+    for(int i=0; i<board->piece_list_size[0]; i++){
+        score -= pos_value[player][board->piece_list[player][i][1]][board->piece_list[player][i][0]];
     }
 
     //random factor
