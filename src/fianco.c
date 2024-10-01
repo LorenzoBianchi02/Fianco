@@ -61,8 +61,8 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 0;
-    int server = 1, sock;
+    int human = 2;
+    int server = 0, sock;
     int flag;
     clock_t start, end;
     int res;
@@ -112,7 +112,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start, (float)((float)states_visited/start)/CLOCKS_PER_SEC, collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, "EVALUATION: %d", res);
@@ -223,7 +223,7 @@ int main(){
 
 
 
-                int depth = 10;
+                int depth = 11;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
                     depth = 12;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
@@ -739,31 +739,32 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int move = 0;
     int capt = CAN_CAPT(moves);
 
+    int one_move = 0;       //TEST:
+    if(moves[1][0][0] != -1 && moves[1][1][0] == -1)
+        one_move = 1;
 
-    //KILLER MOVE (only when you don't have to capture) //TEST: maybe it is worth checking always
-    if(!capt){
-        for(int i=0; i<2; i++){
-            if(board->killer_move[board->depth][i][0] < 9){
-                //check for valid move
-                if(movePiece(board, board->killer_move[board->depth][i][0], board->killer_move[board->depth][i][1], board->killer_move[board->depth][i][2], board->killer_move[board->depth][i][3])){
-                    
-                    value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
-                    undoMove(board, board->killer_move[board->depth-1][i][0], board->killer_move[board->depth-1][i][1], board->killer_move[board->depth-1][i][2], board->killer_move[board->depth-1][i][3]);
 
-                    if(value > score)
-                        score = value;
+    //KILLER MOVE
+    for(int i=0; i<2; i++){
+        if(board->killer_move[board->depth][i][0] < 9){
+            //check for valid move
+            if(movePiece(board, board->killer_move[board->depth][i][0], board->killer_move[board->depth][i][1], board->killer_move[board->depth][i][2], board->killer_move[board->depth][i][3])){
+                
+                value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+                undoMove(board, board->killer_move[board->depth-1][i][0], board->killer_move[board->depth-1][i][1], board->killer_move[board->depth-1][i][2], board->killer_move[board->depth-1][i][3]);
 
-                    if(score >= beta){
-                        memcpy(best, board->killer_move[board->depth][i], 4);
-                        killer_prunes++;
+                if(value > score)
+                    score = value;
 
-                        goto done;
-                    }
+                if(score >= beta){
+                    memcpy(best, board->killer_move[board->depth][i], 4);
+                    killer_prunes++;
+
+                    goto done;
                 }
             }
         }
     }
-
 
 
     for(int i=0; moves[capt][i][0] != -1; i++){
@@ -773,7 +774,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
             movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
 
-            value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+            value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
 
             undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
 
