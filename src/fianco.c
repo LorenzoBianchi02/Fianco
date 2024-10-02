@@ -20,6 +20,7 @@ uint64_t TT_prunes;
 uint64_t killer_prunes;
 uint64_t collision;
 int redo;
+int tot_time;
 
 int main(){
     //---------NCURSES---------//
@@ -61,7 +62,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = 1;
     int server = 0, sock;
     int flag;
     clock_t start, end;
@@ -112,7 +113,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (total: %ld) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, tot_time/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, "EVALUATION: %d", res);
@@ -223,7 +224,7 @@ int main(){
 
 
 
-                int depth = 9;
+                int depth = 10;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
                     depth = 12;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
@@ -258,6 +259,8 @@ int main(){
             end = clock();
 
             start = ((double) (end - start));
+
+            tot_time += start;
 
             // human = human % 2 + 1;
         }
@@ -315,15 +318,15 @@ board_t *initializeBoard(){
 
     // int init_board[9][9] = 
     // {
-        // {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 1, 0, 0, 0, 0},
-        // {0, 0, 1, 0, 2, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 1, 0, 0, 0, 0},
-        // {0, 0, 0, 1, 0, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 0, 0, 0, 0, 0},
-        // {0, 0, 0, 0, 0, 0, 0, 0, 0}
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 0},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 1, 0, 0, 2, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 2, 0, 2, 0},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 1, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2}
     // };
 
     board->piece_list_size[0] = 0;
