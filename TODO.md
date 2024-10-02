@@ -1,11 +1,11 @@
 ### PRIORITY# ##
-- more TT elements
+- time handling
 
-- handle 3 move repition (I could just check in the root, and save the real last moves played)
+- more TT elements (30 bits with 10 bytes should work)
 
-- checking ai time
-
-- confirm ai move
+- ENDGAME:
+    - handle 3 move repition (I could just check in the root, and save the real last moves played)
+    - change eval function
 
 - opening book
 
@@ -17,14 +17,4 @@
 - better transposition replacement scheme
 
 # WHO CARES #
-- change name of negamarx func
-
 - mouse and keyboard
-
-- should free memory at some point
-
-- colors
-
-- move position of the board
-
-- using memcpy more

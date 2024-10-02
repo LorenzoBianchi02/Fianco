@@ -12,7 +12,7 @@
 #define MAX_MOVES 1024
 #define DRAW 0
 #define WIN 30000
-#define LOSS 30000
+#define LOSS -30000
 
 //--BOARD--//
 #define PLAYER(x, y) _PLAYER(board, x, y)
@@ -45,6 +45,8 @@ typedef struct board_t{
     uint8_t move_history[1024][4]; //NOTE: if game goes longer it will crash
 
     uint8_t killer_move[100][2][4]; //2 killer moves
+
+    uint8_t end_game; //if the game is in a end game position
 }board_t;
 
 board_t *initializeBoard();
