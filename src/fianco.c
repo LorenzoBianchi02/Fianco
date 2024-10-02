@@ -4,6 +4,7 @@
 #include <locale.h>
 #include <time.h>
 #include <string.h>
+#include <sys/resource.h>
 
 #include "fianco.h"
 #include "server.h"
@@ -23,6 +24,18 @@ int redo;
 int tot_time;
 
 int main(){
+    //increase memory allocation allowance
+    struct rlimit lim;
+    
+    // Set memory lock limit to 8 GB
+    lim.rlim_cur = 8L * 1024 * 1024 * 1024;  // Soft limit
+    lim.rlim_max = 8L * 1024 * 1024 * 1024;  // Hard limit
+    
+    if (setrlimit(RLIMIT_MEMLOCK, &lim) == -1) {
+        perror("Failed to set memory limit");
+        return 1;
+    }
+
     //---------NCURSES---------//
     setlocale(LC_ALL, "");
 
@@ -62,7 +75,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 1;
+    int human = 2;
     int server = 0, sock;
     int flag;
     clock_t start, end;

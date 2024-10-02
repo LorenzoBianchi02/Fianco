@@ -22,7 +22,7 @@ build: $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LIB)
 
 run:
-	./$(TARGET) $(ARGS)
+	sudo ./$(TARGET) $(ARGS)
 
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) -I $(INC)/ $(FLAGS) -c $< -o $@
