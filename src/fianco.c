@@ -21,7 +21,6 @@ uint64_t TT_prunes;
 uint64_t killer_prunes;
 uint64_t collision;
 int redo;
-int tot_time;
 
 int main(){
     //increase memory allocation allowance
@@ -72,10 +71,12 @@ int main(){
 
     board_t *board = initializeBoard();
     uint8_t fromx, fromy, tox, toy;
+    int tot_time[MAX_MOVES] = {0};
+    int num_time=0;
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = 1;
     int server = 0, sock;
     int flag;
     clock_t start, end;
@@ -126,7 +127,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (total: %ld) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, tot_time/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (total: %ld) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, tot_time[num_time ? num_time-1 : 0]/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
         
         if(board->turn)
                 mvprintw(7, 20, "EVALUATION: %d", res);
@@ -151,11 +152,12 @@ int main(){
                 //---UNDO---//
                 if(board->turn && fromy == 3 && fromx >= 10 && fromx <= 12){
                     undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
-                    
+
                     if(board->turn){
                         undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
-                        
                     }
+
+                    num_time--;
 
                     goto start_turn; //this is my code, and I shall do what I want!!!
                 }
@@ -237,7 +239,7 @@ int main(){
 
 
 
-                int depth = 10;
+                int depth = 9;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
                     depth = 12;
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
@@ -273,7 +275,12 @@ int main(){
 
             start = ((double) (end - start));
 
-            tot_time += start;
+            tot_time[num_time] = start;
+            
+            if(num_time)
+                tot_time[num_time] += tot_time[num_time-1];
+
+            num_time++;
 
             // human = human % 2 + 1;
         }
@@ -291,7 +298,6 @@ int main(){
 
 
     //---ENDGAME---//
-    //TEST:
     erase();
     printBoard(board);
     move(11, 0);
@@ -440,7 +446,7 @@ void getMoves(board_t *board, int player, move_t moves){
             tox = fromx + _moves[player][j][0];
             toy = fromy + _moves[player][j][1];
 
-            if(validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+            if(validMove(board, fromx, fromy, tox, toy)){
                 moves[1][size[1]][0] = fromx;
                 moves[1][size[1]][1] = fromy;
                 moves[1][size[1]][2] = tox;
@@ -461,7 +467,7 @@ void getMoves(board_t *board, int player, move_t moves){
                 tox = fromx + _moves[player][j][0];
                 toy = fromy + _moves[player][j][1];
 
-                if(validMove(board, fromx, fromy, tox, toy)){ //REWRITE: not very elegant
+                if(validMove(board, fromx, fromy, tox, toy)){
                     moves[0][size[0]][0] = fromx;
                     moves[0][size[0]][1] = fromy;
                     moves[0][size[0]][2] = tox;
@@ -484,7 +490,7 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
 
-    //no piece in starting position or arriving position already occupied //INEF:(small) for the ai the first check isn't necesary
+    //no piece in starting position or arriving position already occupied
     if(!PLAYER(fromx, fromy))
         return FALSE;
     if(PLAYER(tox, toy))
@@ -496,7 +502,6 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
     if(fromy == toy && abs(fromx - tox) == 1)
         return 1;
 
-    //REWRITE: can be written better
     //up down
     if(fromx == tox){
         if(player == 1 && toy - fromy == 1)
@@ -505,7 +510,6 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
             return 1;
     }
 
-    //REWRITE: this aswell, to much duplication
     //capture
     if(abs(fromx - tox) == 2 && abs(fromy - toy) == 2){
         int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
@@ -620,7 +624,7 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 
     if(move == 1){
         //change coords
-        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox;
         board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
         
         //move "pointer"
@@ -631,13 +635,13 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
         board->cell[fromx][fromy][0] = 0;
 
     }else if(move == 2){
-        int signx = (tox - fromx)/2, signy = (toy - fromy)/2; //REWRITE:
+        int signx = (tox - fromx)/2, signy = (toy - fromy)/2;
 
         //move capturing piece
-        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox; //REWRITE: use memcpy
+        board->piece_list[list_from][POSITION(fromx, fromy)][0] = tox;
         board->piece_list[list_from][POSITION(fromx, fromy)][1] = toy;
 
-        PLAYER(tox, toy) = PLAYER(fromx, fromy);    //REWRITE: finda a way to asign vars
+        PLAYER(tox, toy) = PLAYER(fromx, fromy);
         POSITION(tox, toy) = POSITION(fromx, fromy);
         PLAYER(fromx, fromy) = 0;
 
@@ -731,16 +735,15 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     }
 
     //TERMINAL POSITION
-    //REWRITE:
     int terminal = checkWin(board);
 
     if(terminal){
         if(terminal == 1)
-            eval = 30000 - board->depth*10;
+            eval = WIN - board->depth*10;
         else if(terminal == 2)
-            eval = -30000 + board->depth*10;
+            eval = LOSS + board->depth*10;
         else
-            eval = 0;
+            eval = DRAW;
 
         return eval;
     }
@@ -1017,8 +1020,8 @@ int lookupTT(transposition_table_t table[TT_SIZE], uint64_t key){
     return -1;
 }
 
-//NOTE: currently using DEEP replacement scheme
-void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth){ //TODO: add args    
+//currently using DEEP replacement scheme
+void storeTT(transposition_table_t table[TT_SIZE], uint64_t key, value_t value, uint8_t type, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy, uint8_t depth){  
     //depth here is equal to how much further I will look (have looked)
     uint32_t key_small = KEY(key);
 

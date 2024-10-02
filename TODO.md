@@ -1,6 +1,4 @@
 ### PRIORITY# ##
-- bitboards
-
 - more TT elements
 
 - handle 3 move repition (I could just check in the root, and save the real last moves played)

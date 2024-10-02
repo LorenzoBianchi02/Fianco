@@ -9,6 +9,11 @@
 #include <time.h>
 #include <string.h>
 
+#define MAX_MOVES 1024
+#define DRAW 0
+#define WIN 30000
+#define LOSS 30000
+
 //--BOARD--//
 #define PLAYER(x, y) _PLAYER(board, x, y)
 #define _PLAYER(board, x, y) board->cell[(x)][(y)][0]
