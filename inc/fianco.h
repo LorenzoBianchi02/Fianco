@@ -57,7 +57,7 @@ board_t *initializeBoard();
 typedef int16_t value_t;
 
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
-void getMoves(board_t *board, int player, move_t moves);
+int getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);

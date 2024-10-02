@@ -1,6 +1,8 @@
 ### PRIORITY# ##
 - time handling
 
+- move history
+
 - more TT elements (30 bits with 10 bytes should work)
 
 - ENDGAME:

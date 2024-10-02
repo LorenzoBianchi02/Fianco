@@ -249,6 +249,7 @@ int main(){
                 if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
                     depth = 29;
 
+                move(7, 35);
                 printw(", depth: %d", depth);
                 refresh();
 
@@ -430,7 +431,7 @@ int _moves[2][5][2] = {
     {{0, -1}, {-1, 0}, {1, 0}, {-2, -2}, {2, -2}}};
 
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
-void getMoves(board_t *board, int player, move_t moves){
+int getMoves(board_t *board, int player, move_t moves){
     int size[2] = {0, 0}; //captures and moves
     uint8_t fromx, fromy, tox, toy;
     int i, j, move;
@@ -481,6 +482,8 @@ void getMoves(board_t *board, int player, move_t moves){
 
     moves[0][size[0]][0] = -1;
     moves[1][size[1]][0] = -1;
+
+    return i;
 }
 
 
@@ -920,6 +923,39 @@ value_t pos_value[2][9][9] = {
      {0, 0, 0, 0, 0, 0, 0, 0, 0},
     }
 };
+
+//TEST: try making a heatmap that favours the center, at a rate that depends on y and x (- has higher val)
+/*
+    \---/
+     \-/
+      .
+     /-\
+    /---\
+*/
+// value_t pos_value[2][9][9] = {
+//     {
+//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
+//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
+//      {0, 0, 0, 40, 40, 40, 0, 0, 0},
+//      {50, 50, 50, 90, 90, 90, 50, 50, 50},
+//      {100, 100, 100, 140, 140, 140, 100, 100, 100},
+//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
+//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
+//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
+//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
+//     },
+//     {
+//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
+//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
+//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
+//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
+//      {100, 100, 100, 140, 140, 140, 100, 100, 100},
+//      {50, 50, 50, 90, 90, 90, 50, 50, 50},
+//      {0, 0, 0, 40, 40, 40, 0, 0, 0},
+//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
+//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
+//     }
+// };
 
 
 value_t evaluate(board_t *board){
