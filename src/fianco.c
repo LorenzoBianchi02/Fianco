@@ -52,6 +52,7 @@ int main(){
 
     init_color(COLOR_GREEN, 619, 365, 118);
     init_color(COLOR_YELLOW, 804, 667, 490);
+    init_color(COLOR_MAGENTA, 0, 280, 780);
     
     //DEBUG: remove not used pairs
     //NB: be carefull when changing the order
@@ -62,6 +63,7 @@ int main(){
     init_pair(6, COLOR_BLACK, COLOR_BLACK);     //turn color 1
     init_pair(5, COLOR_BLACK, COLOR_WHITE);     //turn color 2
     init_pair(7, COLOR_BLACK, COLOR_CYAN);      //last move
+    init_pair(8, COLOR_BLACK, COLOR_MAGENTA);
 
     init_color(COLOR_BLACK, 0, 0, 0);
 
@@ -74,24 +76,21 @@ int main(){
 
     board_t *board = initializeBoard();
     uint8_t fromx, fromy, tox, toy;
-    int tot_time[MAX_MOVES] = {0};
-    int num_time=0;
+    int tot_time=0;
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 0;
+    int human = 2;
     int server = 0, sock;
     int flag;
-    clock_t start, end;
     value_t res;
-    int depth;
+    int depth, time_used=0;
 
     if(server > 0){
         sock = connect_server();
     }
 
-
-    int tmp = lookupTT(transpos_table, board->hash);    //FIXME: why am I doing this?
+    int tmp = lookupTT(transpos_table, board->hash);    //FIXME: why am I doing this? (afraid to remove)
 
     //TODO: ask if you want to play as white or black
 
@@ -105,8 +104,9 @@ int main(){
         // erase(); //DEBUG: remove 
         printBoard(board);
 
-        if(board->turn && board->turn % 2 + 1 == human){
-            mvchgat(8-toy, 2*tox, 2, A_NORMAL, 7, NULL);
+        if(board->turn){
+            mvchgat(8-toy, 2*tox, 2, A_NORMAL, 8, NULL);
+            mvchgat(8-fromy, 2*fromx, 2, A_NORMAL, 7, NULL);
         }
  
         mvprintw(1, 20, "Player's turn:   \n");
@@ -129,7 +129,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (total: %ld) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, tot_time[num_time ? num_time-1 : 0]/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %d seconds (total: %d) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, time_used, tot_time, (float)states_visited/time_used, collision, redo);
         
         if(board->turn){
             move(7, 20);
@@ -163,14 +163,11 @@ int main(){
                         undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
                     }
 
-                    num_time--;
-
                     goto start_turn; //this is my code, and I shall do what I want!!!
                 }
 
             }while(!boardCoords(&fromx, &fromy) || !PLAYER(fromx, fromy) || PLAYER(fromx, fromy) != board->turn % 2 + 1); //NOTE: this may be the only place where it is checked that the piece picked needs to be of the current player
 
-            // mvprintw(fromy, fromx*2, "%d %d", fromx, fromy);
 
             mvchgat(8-fromy, fromx*2, 2, A_NORMAL, ((fromx+fromy+1)%2)+3, NULL);
 
@@ -216,8 +213,6 @@ int main(){
         else{
             // human = human % 2 + 1; //uncomment to only play against yourself
             
-            start = clock();
-
             //if you only have one possible move
             if(moves[1][0][0] != -1 && moves[1][1][0] == -1){
                 fromx = moves[1][0][0];
@@ -260,7 +255,16 @@ int main(){
 
                 //time calculation
                 out_of_time = 0;
-                board->time_out = time(NULL) + 10;  //TODO: define time to give
+
+
+                if(!board->turn || (MAX_TIME - tot_time) >= MAX_TIME/5) 
+                    time_used = 10;
+                else
+                    time_used = (MAX_TIME - tot_time)/10;
+                
+
+                board->time_out = time(NULL) + time_used;
+                tot_time += time_used;
 
                 value_t old_res;
                 redo=0;
@@ -282,28 +286,13 @@ int main(){
                     refresh();
                 }
 
-                // erase();
-                // printw("END OF IT res: %d", res);
-                // refresh();
-                // getch();
-
                 fromx = moves[capt][0][0];
                 fromy = moves[capt][0][1];
                 tox = moves[capt][0][2];
                 toy = moves[capt][0][3];
                 
             }
-
-            end = clock();
-
-            start = ((double) (end - start));
-
-            tot_time[num_time] = start;
             
-            if(num_time)
-                tot_time[num_time] += tot_time[num_time-1];
-
-            num_time++;
 
             // human = human % 2 + 1;
         }
