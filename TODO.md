@@ -11,6 +11,8 @@
 
 - opening book
 
+- seperate time for 2 self ai
+
 ## IF TIME ##
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient
 
