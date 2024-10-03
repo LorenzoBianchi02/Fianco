@@ -22,6 +22,9 @@ uint64_t killer_prunes;
 uint64_t collision;
 int redo;
 
+int8_t out_of_time;
+uint8_t last_moves_considered;
+
 int main(){
     //increase memory allocation allowance
     struct rlimit lim;
@@ -50,7 +53,7 @@ int main(){
     init_color(COLOR_GREEN, 619, 365, 118);
     init_color(COLOR_YELLOW, 804, 667, 490);
     
-    //END: remove not used pairs
+    //DEBUG: remove not used pairs
     //NB: be carefull when changing the order
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);    //board color 1
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
@@ -76,11 +79,12 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 1;
+    int human = 2;
     int server = 0, sock;
     int flag;
     clock_t start, end;
-    int res;
+    value_t res;
+    int depth;
 
     if(server > 0){
         sock = connect_server();
@@ -98,7 +102,7 @@ int main(){
     while(!checkWin(board)){
         start_turn:
 
-        erase(); //END: remove 
+        // erase(); //DEBUG: remove 
         printBoard(board);
 
         if(board->turn && board->turn % 2 + 1 == human){
@@ -110,7 +114,6 @@ int main(){
 
         mvprintw(3, 20, " UNDO \n");
         mvchgat(3, 20, 6, A_NORMAL, 5, NULL);
-        refresh();
 
         move(10, 0);
         printw("LIST WHITE: ");
@@ -118,7 +121,6 @@ int main(){
         printw("LIST BLACK: ");
         printList(board);
         printw("\n");
-        refresh();
 
 
         getMoves(board, board->turn%2+1, moves);
@@ -129,8 +131,12 @@ int main(){
         move(6, 20);
         printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %ld seconds (total: %ld) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, start/CLOCKS_PER_SEC, tot_time[num_time ? num_time-1 : 0]/CLOCKS_PER_SEC, (float)states_visited/((float)start/CLOCKS_PER_SEC), collision, redo);
         
-        if(board->turn)
-                mvprintw(7, 20, "EVALUATION: %d", res);
+        if(board->turn){
+            move(7, 20);
+            clrtoeol();
+            printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d (considered %d moves)", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3], last_moves_considered);
+            
+        }
 
         refresh();
 
@@ -232,38 +238,52 @@ int main(){
                     board->killer_move[i][1][0] = -1;
                 }
 
-
                 //clear TT
                 memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
 
-
-
-                int depth = 9;
-                if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
-                    depth = 12;
-                if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
-                    depth = 14;
-                if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
-                    depth = 23;
-                if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                    depth = 29;
-
-                move(7, 35);
-                printw(", depth: %d", depth);
-                refresh();
-
+                //fixed depth
+                // int depth = 9;
+                // if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
+                //     depth = 12;
+                // if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
+                //     depth = 14;
+                // if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
+                //     depth = 23;
+                // if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
+                //     depth = 29;
 
                 
                 //TODO: principal variation
                 //      if the opponent followed the pv, the I should make the first move the one that was present in my pv
                 
+
+                //time calculation
+                out_of_time = 0;
+                board->time_out = time(NULL) + 10;  //TODO: define time to give
+
+                value_t old_res;
                 
-                for(int i=1; i<=depth; i++){
+                for(int i=1; !out_of_time; i++){
                     board->depth = 0;
                     res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
+                    depth = i;
+
+                    if(res == -INF)
+                        res = old_res;
+
+                    old_res = res;
+
+                    move(7, 20);
+                    clrtoeol();
+                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
+                    refresh();
                 }
 
+                // erase();
+                // printw("END OF IT res: %d", res);
+                // refresh();
+                // getch();
 
                 fromx = moves[capt][0][0];
                 fromy = moves[capt][0][1];
@@ -323,31 +343,31 @@ board_t *initializeBoard(){
     board_t *board = (board_t *)malloc(sizeof(board_t));
 
     // setting up the board
-    int init_board[9][9] = 
-    {
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2},
-        {1, 0, 0, 1, 0, 2, 0, 0, 2},
-        {1, 0, 1, 0, 0, 0, 2, 0, 2},
-        {1, 1, 0, 0, 0, 0, 0, 2, 2},
-        {1, 0, 0, 0, 0, 0, 0, 0, 2}
-    };
-
     // int init_board[9][9] = 
     // {
-    //     {1, 0, 0, 0, 0, 0, 0, 0, 0},
-    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
-    //     {1, 0, 1, 0, 0, 2, 0, 0, 2},
-    //     {1, 0, 0, 0, 0, 2, 0, 2, 0},
     //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
-    //     {1, 0, 0, 0, 0, 0, 1, 0, 2},
-    //     {1, 0, 0, 0, 0, 0, 0, 2, 2},
-    //     {1, 1, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 0, 0, 0, 0, 0, 0, 2},
+    //     {1, 0, 0, 1, 0, 2, 0, 0, 2},
+    //     {1, 0, 1, 0, 0, 0, 2, 0, 2},
+    //     {1, 1, 0, 0, 0, 0, 0, 2, 2},
     //     {1, 0, 0, 0, 0, 0, 0, 0, 2}
     // };
+
+    int init_board[9][9] = 
+    {
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 1, 0, 0, 2, 0, 0, 0},
+        {0, 0, 0, 0, 0, 2, 0, 2, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0},
+        {0, 1, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0}
+    };
 
     board->piece_list_size[0] = 0;
     board->piece_list_size[1] = 0;
@@ -678,10 +698,18 @@ void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
     states_visited++;
 
+    //check TIME-OUT
+    if(states_visited << 50 == 0){
+        if(time(NULL) >= board->time_out)
+            out_of_time = 1;
+    }
+    if(out_of_time)
+        return 0;
+
     int old_alpha = alpha;
     value_t eval;
 
-    uint32_t key = KEY(board->hash);;
+    uint32_t key = KEY(board->hash);
 
     //TRANSOPITION TABLE
     int height = lookupTT(transpos, board->hash);
@@ -853,15 +881,20 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         }else{
             value = -negaMarx(board, transpos, depth-1, -alpha - 1, -alpha, best);
 
-            if(alpha < value && value < beta){
+            if(alpha < value && value < beta && !out_of_time){
                 value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
                 redo=depth;
             }
         }
 
+
         undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
         scores[i] = value;
-
+        
+        
+        //time out
+        if(out_of_time)
+            break;
 
         if(value > score)
             score = value;
@@ -878,24 +911,33 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
     int max;
     value_t max_val;
     uint8_t tmp_move[4];
-    for(int j=0; j<i; j++){
-        max_val = -INF;
-        for(int h=j; h<i; h++){
+    int j, h, tmp;
+
+
+    for(j=0; j<i; j++){
+        max_val = scores[j];
+        max = j;
+        for(h=j+1; h<i; h++){
             if(scores[h] > max_val){
                 max = h;
                 max_val = scores[h];
             }
         }
 
+        tmp = scores[max];  //INEF: only second line need DEBUG:
         scores[max] = scores[j];
+        scores[j] = tmp;
 
         memcpy(tmp_move, moves[capt][j], 4);
         memcpy(moves[capt][j], moves[capt][max], 4);
         memcpy(moves[capt][max], tmp_move, 4);
     }
 
+    if(out_of_time){
+        last_moves_considered = i;
+    }
 
-    return score;
+    return scores[0];
 }
 
 //[0][1]: player y position, [2]: player x position

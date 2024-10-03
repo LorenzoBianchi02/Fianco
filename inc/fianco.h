@@ -47,6 +47,8 @@ typedef struct board_t{
     uint8_t killer_move[100][2][4]; //2 killer moves
 
     uint8_t end_game; //if the game is in a end game position
+
+    time_t time_out;
 }board_t;
 
 board_t *initializeBoard();

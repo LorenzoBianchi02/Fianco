@@ -12,7 +12,7 @@
             "backgroundColor": "blue",
             "overviewRulerColor": "blue"
         },{
-            "text": "END:",
+            "text": "DEBUG:",
             "color": "white",
             "backgroundColor": "purple",
             "overviewRulerColor": "PURPLE"
