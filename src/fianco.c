@@ -76,7 +76,6 @@ int main(){
 
     board_t *board = initializeBoard();
     uint8_t fromx, fromy, tox, toy;
-    int tot_time=0;
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
@@ -85,6 +84,7 @@ int main(){
     int flag;
     value_t res;
     int depth, time_used=0;
+    clock_t start, end, tot_time=0;
 
     if(server > 0){
         sock = connect_server();
@@ -129,7 +129,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %d seconds (total: %d) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, time_used, tot_time, (float)states_visited/time_used, collision, redo);
+        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %d seconds (total: %d) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, time_used, (int)((double)tot_time/CLOCKS_PER_SEC), (float)(states_visited * CLOCKS_PER_SEC)/(end-start), collision, redo);
         
         if(board->turn){
             move(7, 20);
@@ -220,6 +220,10 @@ int main(){
                 tox = moves[1][0][2];
                 toy = moves[1][0][3];
             }else{
+
+                start = clock();
+
+
                 //reset stuff
                 states_visited = 0;
                 states_pruned = 0;
@@ -257,14 +261,16 @@ int main(){
                 out_of_time = 0;
 
 
-                if(!board->turn || (MAX_TIME - tot_time) >= MAX_TIME/5) 
+                if(!board->turn || ((MAX_TIME * CLOCKS_PER_SEC) - tot_time) >= (MAX_TIME * CLOCKS_PER_SEC)/5) 
                     time_used = 10;
-                else
-                    time_used = (MAX_TIME - tot_time)/10;
+                else{
+                    time_used = ((MAX_TIME * CLOCKS_PER_SEC) - tot_time)/10;
+                    if(time_used <= 0)
+                        time_used = 1;  //min 1 second
+                }
                 
 
                 board->time_out = time(NULL) + time_used;
-                tot_time += time_used;
 
                 value_t old_res;
                 redo=0;
@@ -290,6 +296,10 @@ int main(){
                 fromy = moves[capt][0][1];
                 tox = moves[capt][0][2];
                 toy = moves[capt][0][3];
+
+                end = clock();
+
+                tot_time += end-start;
                 
             }
             
