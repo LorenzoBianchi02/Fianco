@@ -19,8 +19,9 @@ uint64_t states_visited;
 uint64_t states_pruned;
 uint64_t TT_prunes; 
 uint64_t killer_prunes;
+uint64_t null_prunes;
 uint64_t collision;
-int redo;
+int research[64];
 
 int8_t out_of_time;
 uint8_t last_moves_considered;
@@ -79,12 +80,13 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = 0;
     int server = 0, sock;
     int flag;
     value_t res;
     int depth, time_used=0;
     clock_t start, end, tot_time=0;
+    research[0] = 0;
 
     if(server > 0){
         sock = connect_server();
@@ -126,13 +128,18 @@ int main(){
         getMoves(board, board->turn%2+1, moves);
         int capt = CAN_CAPT(moves);
         printMoves(moves);
+        printw("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); //lazy (but functional) way to remove old space bellow
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, standard prunes: %lu, TT prunes: %lu,  killer prunes: %lu, %d seconds (total: %d) (%.0f n/s), collisions: %lu, redo: %d", states_visited, states_pruned, TT_prunes, killer_prunes, time_used, (int)((double)tot_time/CLOCKS_PER_SEC), (float)(states_visited * CLOCKS_PER_SEC)/(end-start), collision, redo);
-        
+        printw("states visited: %lu, PRUNES: standard: %lu, transposition: %lu, killer: %lu, null: %lu", states_visited, states_pruned, TT_prunes, killer_prunes, null_prunes);
+        mvprintw(7, 20, "%d seconds (total: %d) (%.0f n/s), collisions: %lu, research: [", time_used, (int)((double)tot_time/CLOCKS_PER_SEC), (float)(states_visited * CLOCKS_PER_SEC)/(end-start), collision);
+        for(int r=0; r<13; r++)
+            printw("%d ", research[r]);
+        printw("]");
+
         if(board->turn){
-            move(7, 20);
+            move(8, 20);
             clrtoeol();
             printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d (considered %d moves)", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3], last_moves_considered);
             
@@ -220,17 +227,19 @@ int main(){
                 tox = moves[1][0][2];
                 toy = moves[1][0][3];
             }else{
-
-                start = clock();
-
-
-                //reset stuff
+                //reset stats stuff
                 states_visited = 0;
                 states_pruned = 0;
                 TT_prunes = 0;
                 collision = 0;
-                redo = 0;
+                memset(research, 0, sizeof(int) * 64);
                 killer_prunes = 0;
+                null_prunes = 0;
+
+
+                //start timer
+                start = clock();
+
 
                 for(int i=0; i<100; i++){
                     board->killer_move[i][0][0] = -1;
@@ -241,39 +250,24 @@ int main(){
                 memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
 
 
-                //fixed depth
-                // int depth = 9;
-                // if(board->piece_list_size[0] + board->piece_list_size[1] < 15)
-                //     depth = 12;
-                // if(board->piece_list_size[0] + board->piece_list_size[1] < 11)
-                //     depth = 14;
-                // if(board->piece_list_size[0] + board->piece_list_size[1] < 7)
-                //     depth = 23;
-                // if(board->piece_list_size[0] + board->piece_list_size[1] < 5)
-                //     depth = 29;
-
-                
-                //TODO: principal variation
-                //      if the opponent followed the pv, the I should make the first move the one that was present in my pv
-                
 
                 //time calculation
                 out_of_time = 0;
 
-
-                if(!board->turn || ((MAX_TIME * CLOCKS_PER_SEC) - tot_time) >= (MAX_TIME * CLOCKS_PER_SEC)/5) 
-                    time_used = 10;
+                if(!board->turn || (MAX_TIME - tot_time/CLOCKS_PER_SEC) >= MAX_TIME/5) 
+                    time_used = 5;
                 else{
-                    time_used = ((MAX_TIME * CLOCKS_PER_SEC) - tot_time)/10;
+                    time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
+                    if(time_used > 5)
+                        time_used = 5;
                 }
                 
-
                 board->time_out = time(NULL) + time_used;
 
+
                 value_t old_res;
-                redo=0;
                 
                 for(int i=1; !out_of_time; i++){
                     board->depth = 0;
@@ -286,9 +280,9 @@ int main(){
 
                     old_res = res;
 
-                    move(7, 20);
+                    move(8, 20);
                     clrtoeol();
-                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
+                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d  (%d)", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3], out_of_time);
                     refresh();
                 }
 
@@ -884,7 +878,7 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 
             if(alpha < value && value < beta && !out_of_time){
                 value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
-                redo+=depth; 
+                research[depth]++; 
             }
         }
 
