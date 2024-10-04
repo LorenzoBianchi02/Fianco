@@ -1,6 +1,4 @@
 ### PRIORITY# ##
-- time handling
-
 - move history
 
 - more TT elements (30 bits with 10 bytes should work)
@@ -17,8 +15,6 @@
 - currently model and human share the same movePiece, while easier to implement, I should make them seperate and the models one a lot more efficient
 
 - pondering
-
-- better transposition replacement scheme
 
 # WHO CARES #
 - mouse and keyboard

@@ -399,7 +399,7 @@ board_t *initializeBoard(){
 }
 
 //prints the board on the screen (currently at the positions 0 0 of stdscr)
-void printBoard(board_t *board){
+void printBoard(board_t * board){
     // erase();
     int i, j;
     move(0, 0);
