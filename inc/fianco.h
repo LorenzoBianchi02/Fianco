@@ -90,7 +90,6 @@ typedef struct transposition_table_t{
 
 } transposition_table_t;
 
-
 void initRandTable();
 uint64_t getHash(board_t *board_t);
 int lookupTT(transposition_table_t *transpos, uint64_t key);
@@ -99,6 +98,7 @@ void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8
 
 //--AI--//
 #define INF 32000 //fits into an int16_t
+#define NUM_HIST 40
 
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
 value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves);

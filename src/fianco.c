@@ -84,7 +84,7 @@ int main(){
     int server = 0, sock;
     int flag;
     value_t res;
-    int depth, time_used=0;
+    int depth, time_used=0, last_depth=0;
     clock_t start, end, tot_time=0;
     research[0] = 0;
 
@@ -137,11 +137,12 @@ int main(){
         for(int r=0; r<13; r++)
             printw("%d ", research[r]);
         printw("]");
+        printw(",   (prev depth: %d (%d))", last_depth, last_moves_considered);
 
         if(board->turn){
             move(8, 20);
             clrtoeol();
-            printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d (considered %d moves)", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3], last_moves_considered);
+            printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
             
         }
 
@@ -258,21 +259,22 @@ int main(){
                 out_of_time = 0;
 
                 if(!board->turn || (MAX_TIME - tot_time/CLOCKS_PER_SEC) >= MAX_TIME/5) 
-                    time_used = 5;
+                    time_used = 10;
                 else{
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
-                    if(time_used > 5)
-                        time_used = 5;
+                    if(time_used > 10)
+                        time_used = 10;
                 }
                 
                 board->time_out = time(NULL) + time_used;
 
 
                 value_t old_res;
+                int i;
                 
-                for(int i=1; !out_of_time; i++){
+                for(i=1; !out_of_time; i++){
                     board->depth = 0;
 
                     res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
@@ -285,9 +287,11 @@ int main(){
 
                     move(8, 20);
                     clrtoeol();
-                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d  (%d)", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3], out_of_time);
+                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
                     refresh();
                 }
+
+                last_depth = i;
 
                 fromx = moves[capt][0][0];
                 fromy = moves[capt][0][1];
@@ -718,10 +722,10 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     uint32_t key = KEY(board->hash);
 
+
     //TRANSOPITION TABLE
     int height = lookupTT(transpos, board->hash);
 
-    //REWRITE: can I do transposition_table_t tmp = transpos[KEY(board->hash)]???
     if(height >= depth){
         value_t value = transpos[key].value;
         int type = transpos[key].type;
@@ -741,11 +745,15 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             TT_prunes++;
 
             memcpy(best, transpos[key].moves, 4);
+
+            board->prune_history[best[0]][best[1]][best[2]][best[3]]++;
+
             return transpos[key].value;
         }
     }
 
 
+    //LEAF NODE
     if(!depth)
         return evaluate(board);
 
@@ -778,9 +786,9 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     if(terminal){
         if(terminal == 1)
-            eval = WIN - board->depth*10;
+            eval = WIN - board->depth*100;
         else if(terminal == 2)
-            eval = LOSS + board->depth*10;
+            eval = LOSS + board->depth*100;
         else
             eval = DRAW;
 
@@ -792,7 +800,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     //check stalemate
     if(moves[0][0][0] == -1 && moves[1][0][0] == -1)
-        return -30000 + board->depth*10;
+        return LOSS + board->depth*100;
 
 
     int move = 0;
@@ -826,33 +834,75 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     }
 
 
+    // if(!capt){
+    // erase();
+    // for(int i=0; i<NUM_HIST, moves[0][i][0]!=-1; i++){
+    //     mvprintw(i, 0, "%d %d %d %d", moves[0][i][0], moves[0][i][1], moves[0][i][2], moves[0][i][3]);
+    
+    // }
+    // }
+    // refresh();
+
+    //reorder moves based on history hueristic, only for up to #NUM_HIST best moves
+    if(!capt){
+        int max_i, val, val_tmp;
+        int i, j;
+        uint8_t tmp_move[4];
+        for(i=0; i<NUM_HIST, moves[0][i][0]!=-1; i++){
+            max_i = i;
+            val = moves[0][0][0];
+
+            for(j=i+1; moves[0][j][0]!=-1; j++){
+                val_tmp = board->prune_history[moves[0][j][0]][moves[0][j][1]][moves[0][j][2]][moves[0][j][3]];
+                if(val_tmp > val){
+                    max_i = j;
+                    val = val_tmp;
+                }
+            }
+
+            memcpy(tmp_move, moves[0][max_i], 4);
+            memcpy(moves[0][max_i], moves[0][i], 4);
+            memcpy(moves[0][i], tmp_move, 4);
+        }
+    }
+
+    // if(!capt){
+    // for(int i=0; i<NUM_HIST, moves[0][i][0]!=-1; i++){
+    //     mvprintw(i, 12, "%d %d %d %d, ", moves[0][i][0], moves[0][i][1], moves[0][i][2], moves[0][i][3]);
+    
+    // }
+    // }
+    // refresh();
+    // getch();
+
+
     for(int i=0; moves[capt][i][0] != -1; i++){
         //TT move has already been tried
         if(height >= 0 && transpos[key].moves[0] == moves[capt][i][0] && transpos[key].moves[1] == moves[capt][i][1] && transpos[key].moves[2] == moves[capt][i][2] && transpos[key].moves[3] == moves[capt][i][3])
             continue;
 
-            movePiece(board, moves[capt][i]);
+        movePiece(board, moves[capt][i]);
 
-            value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
+        value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
 
-            undoMove(board, moves[capt][i]);
+        undoMove(board, moves[capt][i]);
 
-            if(value > score){
-                score = value;
-                move = i;
-            }
-            if(score > alpha)
-                alpha = score;
-            //prune
-            if(score >= beta){
-                states_pruned++;
+        if(value > score){
+            score = value;
+            move = i;
+        }
+        if(score > alpha)
+            alpha = score;
+        //prune
+        if(score >= beta){
+            states_pruned++;
 
-                //update killer moves
-                memcpy(board->killer_move[board->depth][1], board->killer_move[board->depth][0], 4);
-                memcpy(board->killer_move[board->depth][0], moves[capt][i], 4);
+            //update killer moves
+            memcpy(board->killer_move[board->depth][1], board->killer_move[board->depth][0], 4);
+            memcpy(board->killer_move[board->depth][0], moves[capt][i], 4);
 
-                break;
-            }
+            break;
+        }
     }
 
     memcpy(best, moves[capt][move], 4);
@@ -867,6 +917,9 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     if(height <= depth){
         storeTT(transpos, board->hash, score, bound, best[0], best[1], best[2], best[3], depth);
     }
+
+    //history hueristic
+    board->prune_history[best[0]][best[1]][best[2]][best[3]]++;
 
     return score;
 }
