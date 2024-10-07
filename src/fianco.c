@@ -9,6 +9,7 @@
 #include "fianco.h"
 #include "server.h"
 
+
 int debug;
 
 uint64_t hashTable[9][9][2]; //global rand values
@@ -237,9 +238,10 @@ int main(){
                 memset(research, 0, sizeof(int) * 64);
                 killer_prunes = 0;
                 null_prunes = 0;
+                memset(board->prune_history, 0, sizeof(int) * 81 * 81);
 
 
-    //START     //start timer
+                //start timer
                 start = clock();
 
 
@@ -248,22 +250,22 @@ int main(){
                     board->killer_move[i][1][0] = -1;
                 }
 
-                //clear TT and MH
+                //clear TT
                 memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
-                memset(board->prune_history, 0, sizeof(int) * 81 * 81);
 
 
-                //TIME CALCULATIONS
+
+                //time calculation
                 out_of_time = 0;
 
                 if(!board->turn || (MAX_TIME - tot_time/CLOCKS_PER_SEC) >= MAX_TIME/5) 
-                    time_used = MOVE_TIME;
+                    time_used = 10;
                 else{
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
-                    if(time_used > MOVE_TIME)
-                        time_used = MOVE_TIME;
+                    if(time_used > 10)
+                        time_used = 10;
                 }
                 
                 board->time_out = time(NULL) + time_used;
@@ -296,7 +298,7 @@ int main(){
                 tox = moves[capt][0][2];
                 toy = moves[capt][0][3];
 
-    //END       end = clock();
+                end = clock();
 
                 tot_time += end-start;
                 
@@ -307,7 +309,7 @@ int main(){
         }
 
         //valid move
-        //flag indicates if it captures when it has to (needed of human)
+        //flag indicates if it captures when it has to
         uint8_t tmp_move[4] = {fromx, fromy, tox, toy};
         if(flag && movePiece(board, tmp_move)){
             if(server > 0){
