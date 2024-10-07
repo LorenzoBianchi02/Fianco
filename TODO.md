@@ -1,5 +1,7 @@
 ### PRIORITY# ##
-- move history
+- prune history
+
+- pass array of moves for movePiece and undoMove
 
 - more TT elements (30 bits with 10 bytes should work)
 

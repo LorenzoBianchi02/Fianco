@@ -50,6 +50,8 @@ typedef struct board_t{
     uint8_t end_game; //if the game is in a end game position
 
     time_t time_out;
+
+    int prune_history[9][9][9][9];
 }board_t;
 
 board_t *initializeBoard();
@@ -62,7 +64,7 @@ typedef int16_t value_t;
 typedef int8_t move_t[2][50][4]; //moves a player can make: [2] ([0]: moves, [1]: captures), [75] buffer, [4] fromx, fromy, tox, toy
 int getMoves(board_t *board, int player, move_t moves);
 int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
-int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
+int movePiece(board_t *board, uint8_t coord[4]);
 void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy);
 
 

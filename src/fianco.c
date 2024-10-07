@@ -235,6 +235,7 @@ int main(){
                 memset(research, 0, sizeof(int) * 64);
                 killer_prunes = 0;
                 null_prunes = 0;
+                memset(board->prune_history, 0, sizeof(int) * 81 * 81);
 
 
                 //start timer
@@ -303,7 +304,8 @@ int main(){
 
         //valid move
         //flag indicates if it captures when it has to
-        if(flag && movePiece(board, fromx, fromy, tox, toy)){
+        uint8_t tmp_move[4] = {fromx, fromy, tox, toy};
+        if(flag && movePiece(board, tmp_move)){
             if(server > 0){
                 sendBoard(sock, board);
             }
@@ -547,9 +549,16 @@ int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t
 //Returns whethers the move has succesfully been done.
 //The hash also gets automaticly updated.
 //FIXME:It should be garenteed that a piece is present on fromx/fromy (IT ISN'T) (at the moment it is being checked in validMove).
-int movePiece(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
+int movePiece(board_t *board, uint8_t coords[4]){
     board->turn++;
     board->depth++;
+
+    uint8_t fromx = coords[0];
+    uint8_t fromy = coords[1];
+    uint8_t tox = coords[2];
+    uint8_t toy = coords[3];
+    
+
     int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
     if(!move){
         board->turn--;
@@ -746,7 +755,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         uint8_t move[4] = {transpos[key].moves[0], transpos[key].moves[1], transpos[key].moves[2], transpos[key].moves[3]};
 
         // first try the TT move
-        movePiece(board, move[0], move[1], move[2], move[3]);
+        movePiece(board, move);
 
         score = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
@@ -794,7 +803,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     for(int i=0; i<2; i++){
         if(board->killer_move[board->depth][i][0] < 9){
             //check for valid move
-            if(movePiece(board, board->killer_move[board->depth][i][0], board->killer_move[board->depth][i][1], board->killer_move[board->depth][i][2], board->killer_move[board->depth][i][3])){
+            if(movePiece(board, board->killer_move[board->depth][i])){
                 
                 value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
                 undoMove(board, board->killer_move[board->depth-1][i][0], board->killer_move[board->depth-1][i][1], board->killer_move[board->depth-1][i][2], board->killer_move[board->depth-1][i][3]);
@@ -818,7 +827,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         if(height >= 0 && transpos[key].moves[0] == moves[capt][i][0] && transpos[key].moves[1] == moves[capt][i][1] && transpos[key].moves[2] == moves[capt][i][2] && transpos[key].moves[3] == moves[capt][i][3])
             continue;
 
-            movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+            movePiece(board, moves[capt][i]);
 
             value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
 
@@ -869,7 +878,7 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
     int capt = CAN_CAPT(moves);
 
     for(i=0; moves[capt][i][0] != -1; i++){
-        movePiece(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        movePiece(board, moves[capt][i]);
 
         if(!i){
             value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);    
@@ -936,63 +945,55 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 }
 
 //[0][1]: player y position, [2]: player x position
-value_t pos_value[2][9][9] = {
-    {
-     {0, 0, 10, 10, 20, 10, 10, 0, 0},
-     {0, 0, 10, 20, 20, 20, 10, 0, 0},
-     {0, 0, 10, 40, 40, 40, 10, 0, 0},
-     {50, 50, 50, 90, 90, 90, 50, 50, 50},
-     {150, 140, 120, 140, 140, 140, 120, 140, 150},
-     {170, 160, 150, 150, 150, 150, 150, 160, 170},
-     {200, 180, 150, 150, 150, 150, 150, 180, 200},
-     {300, 250, 200, 200, 200, 200, 200, 250, 300},
-     {300, 300, 300, 300, 300, 300, 300, 300, 300},
-    },
-    {
-     {300, 300, 300, 300, 300, 300, 300, 300, 300},
-     {300, 250, 200, 200, 200, 200, 200, 250, 300},
-     {200, 180, 150, 150, 150, 150, 150, 180, 200},
-     {170, 160, 150, 150, 150, 150, 150, 160, 170},
-     {150, 140, 120, 140, 140, 140, 120, 140, 150},
-     {50, 50, 50, 90, 90, 90, 50, 50, 50},
-     {0, 0, 10, 40, 40, 40, 10, 0, 0},
-     {0, 0, 10, 20, 20, 20, 10, 0, 0},
-     {0, 0, 10, 10, 20, 10, 10, 0, 0},
-    }
-};
-
-//TEST: try making a heatmap that favours the center, at a rate that depends on y and x (- has higher val)
-/*
-    \---/
-     \-/
-      .
-     /-\
-    /---\
-*/
 // value_t pos_value[2][9][9] = {
 //     {
-//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
-//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
-//      {0, 0, 0, 40, 40, 40, 0, 0, 0},
+//      {0, 0, 10, 10, 20, 10, 10, 0, 0},
+//      {0, 0, 10, 20, 20, 20, 10, 0, 0},
+//      {0, 0, 10, 40, 40, 40, 10, 0, 0},
 //      {50, 50, 50, 90, 90, 90, 50, 50, 50},
-//      {100, 100, 100, 140, 140, 140, 100, 100, 100},
-//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
-//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
-//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
-//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
+//      {150, 140, 120, 140, 140, 140, 120, 140, 150},
+//      {170, 160, 150, 150, 150, 150, 150, 160, 170},
+//      {200, 180, 150, 150, 150, 150, 150, 180, 200},
+//      {300, 250, 200, 200, 200, 200, 200, 250, 300},
+//      {300, 300, 300, 300, 300, 300, 300, 300, 300},
 //     },
 //     {
-//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
-//      {200, 200, 200, 200, 200, 200, 200, 200, 200},
-//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
-//      {150, 150, 150, 150, 150, 150, 150, 150, 150},
-//      {100, 100, 100, 140, 140, 140, 100, 100, 100},
+//      {300, 300, 300, 300, 300, 300, 300, 300, 300},
+//      {300, 250, 200, 200, 200, 200, 200, 250, 300},
+//      {200, 180, 150, 150, 150, 150, 150, 180, 200},
+//      {170, 160, 150, 150, 150, 150, 150, 160, 170},
+//      {150, 140, 120, 140, 140, 140, 120, 140, 150},
 //      {50, 50, 50, 90, 90, 90, 50, 50, 50},
-//      {0, 0, 0, 40, 40, 40, 0, 0, 0},
-//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
-//      {0, 0, 0, 0, 0, 0, 0, 0, 0},
+//      {0, 0, 10, 40, 40, 40, 10, 0, 0},
+//      {0, 0, 10, 20, 20, 20, 10, 0, 0},
+//      {0, 0, 10, 10, 20, 10, 10, 0, 0},
 //     }
 // };
+
+value_t pos_value[2][9][9] = {
+    {
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 40, 40, 40, 0, 0, 0},
+     {50, 50, 50, 90, 90, 90, 50, 50, 50},
+     {100, 100, 100, 140, 140, 140, 100, 100, 100},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+    },
+    {
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {100, 100, 100, 140, 140, 140, 100, 100, 100},
+     {50, 50, 50, 90, 90, 90, 50, 50, 50},
+     {0, 0, 0, 40, 40, 40, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+    }
+};
 
 
 value_t evaluate(board_t *board){
