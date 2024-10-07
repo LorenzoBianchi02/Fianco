@@ -9,7 +9,6 @@
 #include "fianco.h"
 #include "server.h"
 
-
 int debug;
 
 uint64_t hashTable[9][9][2]; //global rand values
@@ -128,7 +127,7 @@ int main(){
         getMoves(board, board->turn%2+1, moves);
         int capt = CAN_CAPT(moves);
         printMoves(moves);
-        printw("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); //lazy (but functional) way to remove old space bellow
+        printw("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"); //lazy (but functional) way to remove old used space bellow
         flag = 1;
 
         move(6, 20);
@@ -238,10 +237,9 @@ int main(){
                 memset(research, 0, sizeof(int) * 64);
                 killer_prunes = 0;
                 null_prunes = 0;
-                memset(board->prune_history, 0, sizeof(int) * 81 * 81);
 
 
-                //start timer
+    //START     //start timer
                 start = clock();
 
 
@@ -250,22 +248,22 @@ int main(){
                     board->killer_move[i][1][0] = -1;
                 }
 
-                //clear TT
+                //clear TT and MH
                 memset(transpos_table, 0, sizeof(transpos_table) * TT_SIZE);
+                memset(board->prune_history, 0, sizeof(int) * 81 * 81);
 
 
-
-                //time calculation
+                //TIME CALCULATIONS
                 out_of_time = 0;
 
                 if(!board->turn || (MAX_TIME - tot_time/CLOCKS_PER_SEC) >= MAX_TIME/5) 
-                    time_used = 10;
+                    time_used = MOVE_TIME;
                 else{
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
-                    if(time_used > 10)
-                        time_used = 10;
+                    if(time_used > MOVE_TIME)
+                        time_used = MOVE_TIME;
                 }
                 
                 board->time_out = time(NULL) + time_used;
@@ -298,7 +296,7 @@ int main(){
                 tox = moves[capt][0][2];
                 toy = moves[capt][0][3];
 
-                end = clock();
+    //END       end = clock();
 
                 tot_time += end-start;
                 
@@ -309,7 +307,7 @@ int main(){
         }
 
         //valid move
-        //flag indicates if it captures when it has to
+        //flag indicates if it captures when it has to (needed of human)
         uint8_t tmp_move[4] = {fromx, fromy, tox, toy};
         if(flag && movePiece(board, tmp_move)){
             if(server > 0){
@@ -709,7 +707,7 @@ void undoMove(board_t *board, uint8_t coords[4]){
 value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
     states_visited++;
 
-    //check TIME-OUT
+    //TIME-OUT
     if(states_visited << 46 == 0){
         if(time(NULL) >= board->time_out)
             out_of_time = 1;
@@ -756,7 +754,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     //LEAF NODE
     if(!depth)
         return evaluate(board);
-
 
 
     value_t score = -INF, value;

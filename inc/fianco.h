@@ -9,6 +9,8 @@
 #include <time.h>
 #include <string.h>
 
+#define MOVE_TIME 10
+
 #define MAX_MOVES 1024
 #define MAX_TIME 600
 #define DRAW 0
