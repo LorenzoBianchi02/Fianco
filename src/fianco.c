@@ -806,8 +806,10 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     int move = 0;
     int capt = CAN_CAPT(moves);
 
+    //QUIET MOVE
+    //if you can capture or only have 1 move, the depth doesn't get decreased
     int one_move = 0;
-    if(moves[1][0][0] != -1)
+    if(moves[1][0][0] != -1 || capt)
         one_move = 1;
 
 
@@ -833,16 +835,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         }
     }
 
-
-    // if(!capt){
-    // erase();
-    // for(int i=0; i<NUM_HIST, moves[0][i][0]!=-1; i++){
-    //     mvprintw(i, 0, "%d %d %d %d", moves[0][i][0], moves[0][i][1], moves[0][i][2], moves[0][i][3]);
-    
-    // }
-    // }
-    // refresh();
-
+    //HISTORY HEURISTIC
     //reorder moves based on history hueristic, only for up to #NUM_HIST best moves
     if(!capt){
         int max_i, val, val_tmp;
@@ -865,15 +858,6 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             memcpy(moves[0][i], tmp_move, 4);
         }
     }
-
-    // if(!capt){
-    // for(int i=0; i<NUM_HIST, moves[0][i][0]!=-1; i++){
-    //     mvprintw(i, 12, "%d %d %d %d, ", moves[0][i][0], moves[0][i][1], moves[0][i][2], moves[0][i][3]);
-    
-    // }
-    // }
-    // refresh();
-    // getch();
 
 
     for(int i=0; moves[capt][i][0] != -1; i++){
@@ -1079,7 +1063,7 @@ value_t evaluate(board_t *board){
 
 
 //Return 1 if current player is winning, 2 for the opponent (0 for none).
-//NOTE: Stalemate does not get checked
+//NOTE: Stalemate does not get checked (intentional)
 int checkWin(board_t *board){
     
     //REWRITE:
