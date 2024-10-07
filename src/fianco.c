@@ -164,10 +164,10 @@ int main(){
 
                 //---UNDO---//
                 if(board->turn && fromy == 3 && fromx >= 10 && fromx <= 12){
-                    undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
+                    undoMove(board, board->move_history[board->turn-1]);
 
                     if(board->turn){
-                        undoMove(board, board->move_history[board->turn-1][0], board->move_history[board->turn-1][1], board->move_history[board->turn-1][2], board->move_history[board->turn-1][3]);
+                        undoMove(board, board->move_history[board->turn-1]);
                     }
 
                     goto start_turn; //this is my code, and I shall do what I want!!!
@@ -186,7 +186,9 @@ int main(){
             refresh();
             boardCoords(&tox, &toy);
 
-            if(validMove(board, fromx, fromy, tox, toy)){
+            uint8_t tmp_move[4] = {fromx, fromy, tox, toy};
+
+            if(validMove(board, tmp_move)){
                 getMoves(board, human, moves);
                 printMoves(moves);
                 int capt = CAN_CAPT(moves);
@@ -450,26 +452,22 @@ int _moves[2][5][2] = {
 //populates the moves matrix [0] has captures and [1] has moves, makes it easier to check if can (has to) capture
 int getMoves(board_t *board, int player, move_t moves){
     int size[2] = {0, 0}; //captures and moves
-    uint8_t fromx, fromy, tox, toy;
+    uint8_t coords[4];
     int i, j, move;
 
     player--;
 
     //first check captures
     for(i=0; i<board->piece_list_size[player]; i++){
-        fromx = board->piece_list[player][i][0];
-        fromy = board->piece_list[player][i][1];
+        coords[0] = board->piece_list[player][i][0];
+        coords[1] = board->piece_list[player][i][1];
 
         for(j=3; j<5; j++){
-            tox = fromx + _moves[player][j][0];
-            toy = fromy + _moves[player][j][1];
+            coords[2] = coords[0] + _moves[player][j][0];
+            coords[3] = coords[1] + _moves[player][j][1];
 
-            if(validMove(board, fromx, fromy, tox, toy)){
-                moves[1][size[1]][0] = fromx;
-                moves[1][size[1]][1] = fromy;
-                moves[1][size[1]][2] = tox;
-                moves[1][size[1]][3] = toy;
-
+            if(validMove(board, coords)){
+                memcpy(moves[1][size[1]], coords, 4);
                 size[1]++;
             }
         }
@@ -478,19 +476,15 @@ int getMoves(board_t *board, int player, move_t moves){
     //check moves if no captures
     if(!size[0]){
         for(i=0; i<board->piece_list_size[player]; i++){
-            fromx = board->piece_list[player][i][0];
-            fromy = board->piece_list[player][i][1];
+            coords[0] = board->piece_list[player][i][0];
+            coords[1] = board->piece_list[player][i][1];
 
             for(j=0; j<3; j++){
-                tox = fromx + _moves[player][j][0];
-                toy = fromy + _moves[player][j][1];
+                coords[2] = coords[0] + _moves[player][j][0];
+                coords[3] = coords[1] + _moves[player][j][1];
 
-                if(validMove(board, fromx, fromy, tox, toy)){
-                    moves[0][size[0]][0] = fromx;
-                    moves[0][size[0]][1] = fromy;
-                    moves[0][size[0]][2] = tox;
-                    moves[0][size[0]][3] = toy;
-
+                if(validMove(board, coords)){
+                    memcpy(moves[0][size[0]], coords, 4);
                     size[0]++;
                 }
             }
@@ -505,7 +499,12 @@ int getMoves(board_t *board, int player, move_t moves){
 
 
 //returns 0 if invalid, 1 for a normal move, 2 for a capture
-int validMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
+int validMove(board_t *board, uint8_t coords[4]){
+    uint8_t fromx = coords[0];
+    uint8_t fromy = coords[1];
+    uint8_t tox = coords[2];
+    uint8_t toy = coords[3];
+    
     //check if move is inbounds
     if(fromx < 0 || fromy < 0 || tox < 0 || toy < 0 || fromx > 8 || fromy > 8 || tox > 8 || toy > 8)
         return FALSE;
@@ -553,18 +552,17 @@ int movePiece(board_t *board, uint8_t coords[4]){
     board->turn++;
     board->depth++;
 
-    uint8_t fromx = coords[0];
-    uint8_t fromy = coords[1];
-    uint8_t tox = coords[2];
-    uint8_t toy = coords[3];
-    
-
-    int move = validMove(board, fromx, fromy, tox, toy); //FIXME: remove this from here, for the human it should be in main
+    int move = validMove(board, coords); //FIXME: remove this from here, for the human it should be in main
     if(!move){
         board->turn--;
         board->depth--;
         return FALSE;
     }
+
+    uint8_t fromx = coords[0];
+    uint8_t fromy = coords[1];
+    uint8_t tox = coords[2];
+    uint8_t toy = coords[3];
 
     int list_from = PLAYER(fromx, fromy) - 1;
     
@@ -626,7 +624,12 @@ int movePiece(board_t *board, uint8_t coords[4]){
 //Undos a given move.
 //The hash also gets automaticly updated.
 //It is guaranteed that this was the last move, and a valid one.
-void undoMove(board_t *board, uint8_t fromx, uint8_t fromy, uint8_t tox, uint8_t toy){
+void undoMove(board_t *board, uint8_t coords[4]){
+    uint8_t fromx = coords[0];
+    uint8_t fromy = coords[1];
+    uint8_t tox = coords[2];
+    uint8_t toy = coords[3];
+
     int move;
     if(abs(fromx - tox) == 2)
         move = 2;
@@ -752,14 +755,15 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
     //TRANSPOSITION MOVE
     if(height >= 0){
-        uint8_t move[4] = {transpos[key].moves[0], transpos[key].moves[1], transpos[key].moves[2], transpos[key].moves[3]};
+        uint8_t move[4];
+        memcpy(move, transpos[key].moves, 4);
 
         // first try the TT move
         movePiece(board, move);
 
         score = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
 
-        undoMove(board, move[0], move[1], move[2], move[3]);
+        undoMove(board, move);
 
         if(score >= beta){
             memcpy(best, transpos[key].moves, 4);
@@ -806,7 +810,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             if(movePiece(board, board->killer_move[board->depth][i])){
                 
                 value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
-                undoMove(board, board->killer_move[board->depth-1][i][0], board->killer_move[board->depth-1][i][1], board->killer_move[board->depth-1][i][2], board->killer_move[board->depth-1][i][3]);
+                undoMove(board, board->killer_move[board->depth-1][i]);
 
                 if(value > score)
                     score = value;
@@ -831,7 +835,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
             value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
 
-            undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+            undoMove(board, moves[capt][i]);
 
             if(value > score){
                 score = value;
@@ -892,7 +896,7 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         }
 
 
-        undoMove(board, moves[capt][i][0], moves[capt][i][1], moves[capt][i][2], moves[capt][i][3]);
+        undoMove(board, moves[capt][i]);
         scores[i] = value;
         
         
