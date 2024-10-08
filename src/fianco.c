@@ -287,7 +287,7 @@ int main(){
 
                     move(8, 20);
                     clrtoeol();
-                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, depth, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
+                    printw("EVALUATION: %d, depth: %d,    considering: %d %d %d %d", res, i, moves[capt][0][0], moves[capt][0][1], moves[capt][0][2], moves[capt][0][3]);
                     refresh();
                 }
 
@@ -1037,7 +1037,7 @@ value_t pos_value[2][9][9] = {
 
 
 value_t evaluate(board_t *board){
-    value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 1000);
+    value_t score = ((board->piece_list_size[board->turn % 2] - board->piece_list_size[(board->turn + 1) % 2]) * 2000);
 
     int player = board->turn % 2;
 
