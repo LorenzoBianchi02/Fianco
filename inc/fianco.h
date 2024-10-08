@@ -69,9 +69,13 @@ void undoMove(board_t *board, uint8_t coords[4]);
 
 
 //--TRANSPOSITION TABLE--//
-//using 64 bits for hash, 28 (atm) for primary key //TODO: use 30 bits with smaller struct
-#define KEY(val) (uint32_t)((val) & 0x1FFFFFFF)
+//using 64 bits for hash, 30 (atm) for primary key //TODO: use 30 bits with smaller struct
 #define KEY_HIGH(val) (uint32_t)((val) >> 32)
+//30bits ~12gb
+// #define KEY(val) (uint32_t)((val) & 0x3FFFFFFF)
+// #define TT_SIZE 1073741824
+//29bits ~6gb
+#define KEY(val) (uint32_t)((val) & 0x1FFFFFFF)
 #define TT_SIZE 536870912
 
 #define NOT_PRESENT 0
