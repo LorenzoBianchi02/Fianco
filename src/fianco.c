@@ -264,7 +264,7 @@ int main(){
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
-                    if(time_used > 10)
+                    if(time_used > 10)  //safety measure
                         time_used = 10;
                 }
                 

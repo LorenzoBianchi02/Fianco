@@ -10,7 +10,7 @@
 #include <string.h>
 
 #define MAX_MOVES 1024
-#define MAX_TIME 600
+#define MAX_TIME 1200
 #define DRAW 0
 #define WIN 30000
 #define LOSS -30000
