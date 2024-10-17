@@ -80,7 +80,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 0;
+    int human = 2;
     int server = 0, sock;
     int flag;
     value_t res;
@@ -259,13 +259,13 @@ int main(){
                 out_of_time = 0;
 
                 if(!board->turn || (MAX_TIME - tot_time/CLOCKS_PER_SEC) >= MAX_TIME/5) 
-                    time_used = 10;
+                    time_used = 12;
                 else{
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
-                    if(time_used > 10)  //safety measure
-                        time_used = 10;
+                    if(time_used > 12)  //safety measure
+                        time_used = 12;
                 }
                 
                 board->time_out = time(NULL) + time_used;

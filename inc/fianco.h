@@ -10,7 +10,7 @@
 #include <string.h>
 
 #define MAX_MOVES 1024
-#define MAX_TIME 1200
+#define MAX_TIME 600
 #define DRAW 0
 #define WIN 30000
 #define LOSS -30000
@@ -72,11 +72,11 @@ void undoMove(board_t *board, uint8_t coords[4]);
 //using 64 bits for hash, 30 (atm) for primary key //TODO: use 30 bits with smaller struct
 #define KEY_HIGH(val) (uint32_t)((val) >> 32)
 //30bits ~12gb
-// #define KEY(val) (uint32_t)((val) & 0x3FFFFFFF)
-// #define TT_SIZE 1073741824
+#define KEY(val) (uint32_t)((val) & 0x3FFFFFFF)
+#define TT_SIZE 1073741824
 //29bits ~6gb
-#define KEY(val) (uint32_t)((val) & 0x1FFFFFFF)
-#define TT_SIZE 536870912
+// #define KEY(val) (uint32_t)((val) & 0x1FFFFFFF)
+// #define TT_SIZE 536870912
 
 #define NOT_PRESENT 0
 #define EXACT 1
