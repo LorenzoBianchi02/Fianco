@@ -69,14 +69,11 @@ void undoMove(board_t *board, uint8_t coords[4]);
 
 
 //--TRANSPOSITION TABLE--//
-//using 64 bits for hash, 30 (atm) for primary key //TODO: use 30 bits with smaller struct
+//using 64 bits for hash, 30 for primary key
 #define KEY_HIGH(val) (uint32_t)((val) >> 32)
 //30bits ~12gb
 #define KEY(val) (uint32_t)((val) & 0x3FFFFFFF)
 #define TT_SIZE 1073741824
-//29bits ~6gb
-// #define KEY(val) (uint32_t)((val) & 0x1FFFFFFF)
-// #define TT_SIZE 536870912
 
 #define NOT_PRESENT 0
 #define EXACT 1
@@ -87,7 +84,7 @@ void undoMove(board_t *board, uint8_t coords[4]);
 typedef struct transposition_table_t{
     value_t value;
     uint8_t type;
-    uint8_t moves[4];   //FIXME: this fits in 2 bytes instead of 4
+    uint8_t moves[4];   //NOTE: this fits in 2 bytes instead of 4
     uint8_t depth;
 
     uint32_t key;
@@ -104,8 +101,8 @@ void storeTT(transposition_table_t *transpos, uint64_t key, value_t value, uint8
 #define INF 32000 //fits into an int16_t
 #define NUM_HIST 40
 
-value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
-value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves);
+value_t negaMax(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]);
+value_t negaMaxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves);
 value_t evaluate(board_t *board);
 
 

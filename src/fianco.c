@@ -55,7 +55,6 @@ int main(){
     init_color(COLOR_YELLOW, 804, 667, 490);
     init_color(COLOR_MAGENTA, 0, 280, 780);
     
-    //DEBUG: remove not used pairs
     //NB: be carefull when changing the order
     init_pair(1, COLOR_BLACK, COLOR_YELLOW);    //board color 1
     init_pair(2, COLOR_BLACK, COLOR_GREEN);     //board color 2
@@ -80,7 +79,7 @@ int main(){
 
     transposition_table_t *transpos_table = (transposition_table_t *)malloc(TT_SIZE * sizeof(transposition_table_t)); //NOTE: this has to be equal to 2^primary key bits
 
-    int human = 2;
+    int human = 1;
     int server = 0, sock;
     int flag;
     value_t res;
@@ -94,7 +93,6 @@ int main(){
 
     int tmp = lookupTT(transpos_table, board->hash);    //FIXME: why am I doing this? (afraid to remove)
 
-    //TODO: ask if you want to play as white or black
 
     move_t moves;
     getMoves(board, 1, moves);
@@ -132,7 +130,7 @@ int main(){
         flag = 1;
 
         move(6, 20);
-        printw("states visited: %lu, PRUNES: standard: %lu, transposition: %lu, killer: %lu, null: %lu", states_visited, states_pruned, TT_prunes, killer_prunes, null_prunes);
+        printw("states visited: %lu, PRUNES: standard: %lu, transposition: %lu, killer: %lu", states_visited, states_pruned, TT_prunes, killer_prunes);
         mvprintw(7, 20, "%d seconds (total: %d) (%.0f n/s), collisions: %lu, research: [", time_used, (int)((double)tot_time/CLOCKS_PER_SEC), (float)(states_visited * CLOCKS_PER_SEC)/(end-start), collision);
         for(int r=0; r<13; r++)
             printw("%d ", research[r]);
@@ -219,7 +217,7 @@ int main(){
             board->turn++;
         }
 
-        //------DESTROYER-----//
+        //------AI-----//
         else{
             // human = human % 2 + 1; //uncomment to only play against yourself
             
@@ -262,6 +260,7 @@ int main(){
                     time_used = 10;
                 else{
                     time_used = (MAX_TIME - tot_time/CLOCKS_PER_SEC)/10;
+                    // time_used = 10;
                     if(time_used <= 0)
                         time_used = 1;  //min 1 second
                     if(time_used > 10)  //safety measure
@@ -277,7 +276,7 @@ int main(){
                 for(i=1; !out_of_time; i++){
                     board->depth = 0;
 
-                    res = negaMarxRoot(board, transpos_table, i, -INF, INF, moves);
+                    res = negaMaxRoot(board, transpos_table, i, -INF, INF, moves);
                     depth = i;
 
                     if(res == -INF)
@@ -706,7 +705,7 @@ void undoMove(board_t *board, uint8_t coords[4]){
 
 
 //main function for AI
-value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
+value_t negaMax(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, uint8_t best[4]){
     states_visited++;
 
     //TIME-OUT
@@ -768,7 +767,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
         // first try the TT move
         movePiece(board, move);
 
-        score = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+        score = -negaMax(board, transpos, depth-1, -beta, -alpha, best);
 
         undoMove(board, move);
 
@@ -818,7 +817,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
             //check for valid move
             if(movePiece(board, board->killer_move[board->depth][i])){
                 
-                value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+                value = -negaMax(board, transpos, depth-1, -beta, -alpha, best);
                 undoMove(board, board->killer_move[board->depth-1][i]);
 
                 if(value > score)
@@ -866,7 +865,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
 
         movePiece(board, moves[capt][i]);
 
-        value = -negaMarx(board, transpos, depth-(1-one_move), -beta, -alpha, best);
+        value = -negaMax(board, transpos, depth-(1-one_move), -beta, -alpha, best);
 
         undoMove(board, moves[capt][i]);
 
@@ -907,7 +906,7 @@ value_t negaMarx(board_t *board, transposition_table_t *transpos, int depth, int
     return score;
 }
 
-value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves){
+value_t negaMaxRoot(board_t *board, transposition_table_t *transpos, int depth, int alpha, int beta, move_t moves){
     states_visited++;
 
     int i;
@@ -921,12 +920,12 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
         movePiece(board, moves[capt][i]);
 
         if(!i){
-            value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);    
+            value = -negaMax(board, transpos, depth-1, -beta, -alpha, best);    
         }else{
-            value = -negaMarx(board, transpos, depth-1, -alpha - 1, -alpha, best);
+            value = -negaMax(board, transpos, depth-1, -alpha - 1, -alpha, best);
 
             if(alpha < value && value < beta && !out_of_time){
-                value = -negaMarx(board, transpos, depth-1, -beta, -alpha, best);
+                value = -negaMax(board, transpos, depth-1, -beta, -alpha, best);
                 research[depth]++; 
             }
         }
@@ -1012,26 +1011,26 @@ value_t negaMarxRoot(board_t *board, transposition_table_t *transpos, int depth,
 
 value_t pos_value[2][9][9] = {
     {
-     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-     {0, 0, 0, 40, 40, 40, 0, 0, 0},
+     {0, 0, 0, 10, 20, 10, 0, 0, 0},
+     {0, 0, 10, 20, 30, 20, 10, 0, 0},
+     {0, 10, 20, 30, 40, 30, 20, 10, 0},
      {50, 50, 50, 90, 90, 90, 50, 50, 50},
      {100, 100, 100, 140, 140, 140, 100, 100, 100},
-     {150, 150, 150, 150, 150, 150, 150, 150, 150},
-     {150, 150, 150, 150, 150, 150, 150, 150, 150},
-     {200, 200, 200, 200, 200, 200, 200, 200, 200},
-     {200, 200, 200, 200, 200, 200, 200, 200, 200},
+     {170, 150, 150, 150, 150, 150,  150, 150, 170},
+     {220, 170, 150, 150, 150, 150, 150, 170, 220},
+     {250, 220, 200, 200, 200, 200, 200, 220, 250},
+     {250, 250, 200, 200, 200, 200, 200, 250, 250},
     },
     {
-     {200, 200, 200, 200, 200, 200, 200, 200, 200},
-     {200, 200, 200, 200, 200, 200, 200, 200, 200},
-     {150, 150, 150, 150, 150, 150, 150, 150, 150},
-     {150, 150, 150, 150, 150, 150, 150, 150, 150},
+     {250, 250, 200, 200, 200, 200, 200, 250, 250},
+     {250, 220, 200, 200, 200, 200, 200, 220, 250},
+     {220, 170, 150, 150, 150, 150, 150, 170, 220},
+     {170, 150, 150, 150, 150, 150, 150, 150, 170},
      {100, 100, 100, 140, 140, 140, 100, 100, 100},
      {50, 50, 50, 90, 90, 90, 50, 50, 50},
-     {0, 0, 0, 40, 40, 40, 0, 0, 0},
-     {0, 0, 0, 0, 0, 0, 0, 0, 0},
-     {0, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, 10, 20, 30, 40, 30, 20, 10, 0},
+     {0, 0, 10, 20, 30, 20, 10, 0, 0},
+     {0, 0, 0, 10, 20, 10, 0, 0, 0},
     }
 };
 
@@ -1050,12 +1049,6 @@ value_t evaluate(board_t *board){
     for(int i=0; i<board->piece_list_size[0]; i++){
         score -= pos_value[player][board->piece_list[player][i][1]][board->piece_list[player][i][0]];
     }
-
-    //random factor
-    // score += rand()%200-100; //NOTE: I didnt really like it
-
-    // score -= board->depth * 10;
-
 
     return score;    
 }
